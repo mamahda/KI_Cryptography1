@@ -1,0 +1,23 @@
+# Project context (local only)
+context.md
+
+# Secrets
+.env
+*.env.local
+
+# Encrypted file storage
+storage/
+*.enc
+
+# Go
+bin/
+backend/tmp/
+
+# Frontend
+node_modules/
+dist/
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
