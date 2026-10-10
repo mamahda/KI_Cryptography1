@@ -39,6 +39,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /api/auth/login", s.login)
 	mux.HandleFunc("POST /api/auth/logout", s.logout)
 	mux.HandleFunc("GET /api/auth/me", s.authed(s.me))
+	mux.HandleFunc("GET /api/auth/session", s.session)
 
 	mux.HandleFunc("GET /api/profile", s.authed(s.getProfile))
 	mux.HandleFunc("PUT /api/profile", s.authed(s.putProfile))

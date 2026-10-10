@@ -93,6 +93,29 @@ func (s *Server) me(w http.ResponseWriter, r *http.Request, u db.User) {
 	writeJSON(w, http.StatusOK, userJSON{ID: u.ID, Username: u.Username})
 }
 
+// session reports the signed-in user, or {"user": null}, always with 200.
+// The frontend calls it on page load, where "not signed in" is a normal
+// state rather than an error.
+func (s *Server) session(w http.ResponseWriter, r *http.Request) {
+	none := map[string]any{"user": nil}
+	c, err := r.Cookie(sessionCookie)
+	if err != nil || c.Value == "" {
+		writeJSON(w, http.StatusOK, none)
+		return
+	}
+	u, err := s.db.SessionUser(r.Context(), auth.HashToken(c.Value))
+	if errors.Is(err, db.ErrNotFound) {
+		s.clearCookie(w)
+		writeJSON(w, http.StatusOK, none)
+		return
+	}
+	if err != nil {
+		s.serverError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"user": userJSON{ID: u.ID, Username: u.Username}})
+}
+
 func (s *Server) startSession(w http.ResponseWriter, r *http.Request, userID int64) error {
 	token, hash, err := auth.NewSessionToken()
 	if err != nil {

@@ -165,6 +165,11 @@ func TestIntegration(t *testing.T) {
 	// --- auth ---
 	st, b := anon.do("GET", "/api/auth/me", nil)
 	expect(t, "me without session", st, 401, b)
+	st, b = anon.do("GET", "/api/auth/session", nil)
+	expect(t, "session without login", st, 200, b)
+	if s := decode[struct{ User *userJSON }](t, b); s.User != nil {
+		t.Fatalf("anonymous session has user %+v", s.User)
+	}
 	st, b = alice.do("POST", "/api/auth/register", credentials{"x", "password123"})
 	expect(t, "short username", st, 400, b)
 	st, b = alice.do("POST", "/api/auth/register", credentials{aliceName, "short"})
@@ -184,6 +189,10 @@ func TestIntegration(t *testing.T) {
 	expect(t, "unknown user", st, 401, b)
 	st, b = anon.do("POST", "/api/auth/login", credentials{aliceName, "password123"})
 	expect(t, "login", st, 200, b)
+	st, b = anon.do("GET", "/api/auth/session", nil)
+	if s := decode[struct{ User *userJSON }](t, b); s.User == nil || s.User.Username != aliceName {
+		t.Fatalf("session after login: %s", b)
+	}
 	st, b = anon.do("POST", "/api/auth/logout", nil)
 	expect(t, "logout", st, 204, b)
 	st, b = anon.do("GET", "/api/auth/me", nil)

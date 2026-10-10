@@ -52,7 +52,8 @@ Semua endpoint ada di bawah `/api`. Autentikasi memakai cookie `vault_session` (
 | `POST /auth/register` `{username, password}` | daftar dan langsung login (201) |
 | `POST /auth/login` `{username, password}` | login (200) |
 | `POST /auth/logout` | logout (204) |
-| `GET /auth/me` | user aktif |
+| `GET /auth/me` | user aktif (401 kalau belum login) |
+| `GET /auth/session` | `{"user": {...}}` atau `{"user": null}`, selalu 200. Dipakai frontend saat halaman dimuat. |
 | `PUT /profile` `{full_name, nik, …}` | simpan profil, dienkripsi 3× |
 | `GET /profile?alg=` | profil terdekripsi + waktu dekripsi + ciphertext (hex) |
 | `POST /files` multipart `category`, `file` | upload, dienkripsi 3× (201) |
