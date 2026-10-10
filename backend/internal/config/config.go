@@ -32,7 +32,7 @@ func Load(path string) (Config, error) {
 		return Config{}, err
 	}
 	c := Config{
-		DBDSN:      getenv("DB_DSN", "vault:vault@tcp(127.0.0.1:3307)/vault"),
+		DBDSN:      getenv("DB_DSN", "vault:vault@tcp(127.0.0.1:3306)/vault"),
 		StorageDir: getenv("STORAGE_DIR", "../storage"),
 		HTTPAddr:   getenv("HTTP_ADDR", ":8080"),
 		StaticDir:  os.Getenv("STATIC_DIR"),

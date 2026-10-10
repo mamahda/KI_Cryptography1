@@ -4,13 +4,28 @@ REST API dalam Go yang menyimpan data pribadi, foto KTP, dokumen, dan video. Set
 
 ## Prasyarat
 - Go ≥ 1.24
-- Docker + Docker Compose (untuk MySQL 8). Bisa juga memakai MySQL 8 atau MariaDB ≥ 10.6 yang sudah terpasang.
+- MariaDB ≥ 10.6 yang sudah terpasang dan berjalan. MySQL 8 juga bisa, karena driver dan SQL-nya sama.
+
+## Menyiapkan database (sekali saja)
+Buat database dan user khusus aplikasi. Jalankan sebagai root MariaDB (di Linux biasanya `sudo mariadb`):
+```sql
+CREATE DATABASE IF NOT EXISTS vault CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER IF NOT EXISTS 'vault'@'localhost' IDENTIFIED BY 'vault';
+CREATE USER IF NOT EXISTS 'vault'@'127.0.0.1' IDENTIFIED BY 'vault';
+GRANT ALL PRIVILEGES ON vault.* TO 'vault'@'localhost';
+GRANT ALL PRIVILEGES ON vault.* TO 'vault'@'127.0.0.1';
+FLUSH PRIVILEGES;
+```
+Satu baris perintah:
+```bash
+sudo mariadb -e "CREATE DATABASE IF NOT EXISTS vault CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; CREATE USER IF NOT EXISTS 'vault'@'localhost' IDENTIFIED BY 'vault'; CREATE USER IF NOT EXISTS 'vault'@'127.0.0.1' IDENTIFIED BY 'vault'; GRANT ALL PRIVILEGES ON vault.* TO 'vault'@'localhost'; GRANT ALL PRIVILEGES ON vault.* TO 'vault'@'127.0.0.1'; FLUSH PRIVILEGES;"
+```
+User dibuat untuk dua host (`localhost` dan `127.0.0.1`) karena backend terhubung lewat TCP ke `127.0.0.1`, dan MariaDB bisa mengenali koneksi itu dengan nama host yang mana saja. Password `vault` hanya untuk development lokal. Kalau diganti, sesuaikan `DB_DSN`.
+
+Tabel tidak perlu dibuat manual. Backend menjalankan `internal/db/schema.sql` setiap kali start.
 
 ## Menjalankan
 ```bash
-# dari root repo
-docker compose up -d                     # MySQL di localhost:3307
-
 cd backend
 cp .env.example .env
 # isi SERVER_SECRET di .env dengan hasil perintah ini:
@@ -18,12 +33,12 @@ openssl rand -hex 32
 
 go run ./cmd/server                      # API di http://localhost:8080
 ```
-Server membuat tabel secara otomatis saat start (`internal/db/schema.sql`) dan menyimpan ciphertext file di `../storage/`.
+Ciphertext file disimpan di `../storage/`.
 
 ## Konfigurasi (`.env`)
 | Variabel | Default | Keterangan |
 |---|---|---|
-| `DB_DSN` | `vault:vault@tcp(127.0.0.1:3307)/vault` | DSN go-sql-driver/mysql |
+| `DB_DSN` | `vault:vault@tcp(127.0.0.1:3306)/vault` | DSN go-sql-driver/mysql (untuk MariaDB maupun MySQL) |
 | `SERVER_SECRET` | — (wajib) | 32 byte hex, akar HKDF. **Jangan diganti atau hilang**, karena semua data lama tidak akan bisa didekripsi lagi. |
 | `STORAGE_DIR` | `../storage` | lokasi file `.enc` |
 | `HTTP_ADDR` | `:8080` | alamat listen |
@@ -37,7 +52,7 @@ cmd/server/          entry point HTTP server
 cmd/bench/           benchmark CLI → CSV untuk laporan
 internal/crypto/     HKDF, AES-CTR, DES-CTR, RC4-drop, HMAC, entropi
 internal/api/        handler HTTP + integration test
-internal/db/         query MySQL + schema.sql
+internal/db/         query MariaDB/MySQL + schema.sql
 internal/auth/       bcrypt, validasi kredensial, token session
 internal/filetype/   validasi upload (ekstensi, magic bytes, ukuran)
 internal/storage/    baca/tulis file .enc
@@ -89,8 +104,8 @@ Kode status yang perlu diketahui:
 ```bash
 go test ./... -race                       # unit test (crypto, filetype, stats)
 
-# integration test end-to-end (butuh MySQL yang sedang jalan)
-VAULT_TEST_DSN='vault:vault@tcp(127.0.0.1:3307)/vault' go test ./internal/api -v
+# integration test end-to-end (butuh MariaDB yang sedang jalan)
+VAULT_TEST_DSN='vault:vault@tcp(127.0.0.1:3306)/vault' go test ./internal/api -v
 ```
 Cakupan integration test:
 - register, login, dan logout

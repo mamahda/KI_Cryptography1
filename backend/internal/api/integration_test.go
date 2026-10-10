@@ -1,9 +1,9 @@
 package api
 
-// End-to-end tests against a real MySQL/MariaDB. They are skipped unless
+// End-to-end tests against a real MariaDB/MySQL. They are skipped unless
 // VAULT_TEST_DSN is set, e.g.
 //
-//	VAULT_TEST_DSN='vault:vault@tcp(127.0.0.1:3307)/vault' go test ./internal/api -v
+//	VAULT_TEST_DSN='vault:vault@tcp(127.0.0.1:3306)/vault' go test ./internal/api -v
 
 import (
 	"archive/zip"

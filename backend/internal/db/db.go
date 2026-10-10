@@ -27,8 +27,8 @@ type DB struct {
 	*sql.DB
 }
 
-// Open connects to MySQL, retrying for up to a minute so the server can be
-// started right after `docker compose up`. Sessions run in UTC so
+// Open connects to MariaDB/MySQL, retrying for up to a minute so the server
+// can be started while the database is still booting. Sessions run in UTC so
 // NOW() and the driver agree on timestamps.
 func Open(ctx context.Context, dsn string) (*DB, error) {
 	cfg, err := mysql.ParseDSN(dsn)
