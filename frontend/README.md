@@ -1,10 +1,10 @@
 # Frontend — Secure Personal Data Vault
 
-Aplikasi React + Vite (TypeScript) untuk backend Go di folder [`../backend`](../backend). Penjelasan keputusan desain ada di [`../TEAM.md`](../TEAM.md).
+Aplikasi React + Vite (TypeScript) untuk backend Python (Flask) di folder [`../backend`](../backend).
 
 ## Prasyarat
 - Node.js ≥ 20
-- Backend Go sudah berjalan (default `http://localhost:8080`). Cara menjalankannya ada di README backend.
+- Backend sudah berjalan (default `http://localhost:8080`). Cara menjalankannya ada di README backend.
 
 ## Menjalankan
 ```bash

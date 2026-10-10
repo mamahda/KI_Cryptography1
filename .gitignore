@@ -10,9 +10,11 @@
 /storage/
 *.enc
 
-# Go
-bin/
-backend/tmp/
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
 
 # Frontend
 node_modules/

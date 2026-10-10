@@ -1,0 +1,15 @@
+# Web framework
+Flask>=3.0,<4
+# AES, DES, ARC4 (RC4), CTR mode, HKDF
+pycryptodome>=3.20,<4
+# Password hashing
+bcrypt>=4.1,<6
+# MariaDB / MySQL driver (cryptography is needed for MySQL 8 default auth)
+PyMySQL>=1.1,<2
+cryptography>=42
+# Reads backend/.env
+python-dotenv>=1.0,<2
+# Fast byte histogram for entropy
+numpy>=1.26
+# Tests
+pytest>=8

@@ -1,10 +1,10 @@
 # Backend — Secure Personal Data Vault
 
-REST API dalam Go yang menyimpan data pribadi, foto KTP, dokumen, dan video. Setiap data dienkripsi **tiga kali**, masing-masing dengan AES-256-CTR, DES-CTR, dan RC4-drop[3072]. Integritasnya dijaga dengan HMAC-SHA256. Penjelasan dan alasan setiap keputusan desain ada di [`../TEAM.md`](../TEAM.md).
+REST API dalam **Python (Flask)** yang menyimpan data pribadi, foto KTP, dokumen, dan video. Setiap data dienkripsi **tiga kali**, masing-masing dengan AES-256-CTR, DES-CTR, dan RC4-drop[3072], memakai **PyCryptodome**. Integritasnya dijaga dengan HMAC-SHA256.
 
 ## Prasyarat
-- Go ≥ 1.24
-- MariaDB ≥ 10.6 yang sudah terpasang dan berjalan. MySQL 8 juga bisa, karena driver dan SQL-nya sama.
+- Python ≥ 3.10
+- MariaDB ≥ 10.6 yang sudah terpasang dan berjalan. MySQL 8 juga bisa.
 
 ## Menyiapkan database (sekali saja)
 Buat database dan user khusus aplikasi. Jalankan sebagai root MariaDB (di Linux biasanya `sudo mariadb`):
@@ -20,44 +20,58 @@ Satu baris perintah:
 ```bash
 sudo mariadb -e "CREATE DATABASE IF NOT EXISTS vault CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; CREATE USER IF NOT EXISTS 'vault'@'localhost' IDENTIFIED BY 'vault'; CREATE USER IF NOT EXISTS 'vault'@'127.0.0.1' IDENTIFIED BY 'vault'; GRANT ALL PRIVILEGES ON vault.* TO 'vault'@'localhost'; GRANT ALL PRIVILEGES ON vault.* TO 'vault'@'127.0.0.1'; FLUSH PRIVILEGES;"
 ```
-User dibuat untuk dua host (`localhost` dan `127.0.0.1`) karena backend terhubung lewat TCP ke `127.0.0.1`, dan MariaDB bisa mengenali koneksi itu dengan nama host yang mana saja. Password `vault` hanya untuk development lokal. Kalau diganti, sesuaikan `DB_DSN`.
+User dibuat untuk dua host (`localhost` dan `127.0.0.1`) karena backend terhubung lewat TCP ke `127.0.0.1`, dan MariaDB bisa mengenali koneksi itu dengan nama host yang mana saja. Password `vault` hanya untuk development lokal. Kalau diganti, sesuaikan `DB_PASSWORD` di `.env`.
 
-Tabel tidak perlu dibuat manual. Backend menjalankan `internal/db/schema.sql` setiap kali start.
+Tabel tidak perlu dibuat manual. Server menjalankan `app/schema.sql` setiap kali start.
 
 ## Menjalankan
 ```bash
 cd backend
+python -m venv .venv
+source .venv/bin/activate              # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+
 cp .env.example .env
 # isi SERVER_SECRET di .env dengan hasil perintah ini:
-openssl rand -hex 32
+python -c "import secrets; print(secrets.token_hex(32))"
 
-go run ./cmd/server                      # API di http://localhost:8080
+python run.py                          # API di http://localhost:8080
 ```
 Ciphertext file disimpan di `../storage/`.
 
 ## Konfigurasi (`.env`)
 | Variabel | Default | Keterangan |
 |---|---|---|
-| `DB_DSN` | `vault:vault@tcp(127.0.0.1:3306)/vault` | DSN go-sql-driver/mysql (untuk MariaDB maupun MySQL) |
+| `DB_HOST`, `DB_PORT` | `127.0.0.1`, `3306` | alamat MariaDB |
+| `DB_USER`, `DB_PASSWORD`, `DB_NAME` | `vault`, `vault`, `vault` | kredensial dan nama database |
 | `SERVER_SECRET` | — (wajib) | 32 byte hex, akar HKDF. **Jangan diganti atau hilang**, karena semua data lama tidak akan bisa didekripsi lagi. |
 | `STORAGE_DIR` | `../storage` | lokasi file `.enc` |
-| `HTTP_ADDR` | `:8080` | alamat listen |
+| `HOST`, `PORT` | `127.0.0.1`, `8080` | alamat server |
 | `COOKIE_SECURE` | `false` | `true` kalau server diakses lewat HTTPS |
-| `SESSION_TTL` | `24h` | umur session |
+| `SESSION_TTL_HOURS` | `24` | umur session |
 | `STATIC_DIR` | — | opsional: folder `frontend/dist` untuk di-serve sekaligus oleh server ini |
 
 ## Struktur
 ```
-cmd/server/          entry point HTTP server
-cmd/bench/           benchmark CLI → CSV untuk laporan
-internal/crypto/     HKDF, AES-CTR, DES-CTR, RC4-drop, HMAC, entropi
-internal/api/        handler HTTP + integration test
-internal/db/         query MariaDB/MySQL + schema.sql
-internal/auth/       bcrypt, validasi kredensial, token session
-internal/filetype/   validasi upload (ekstensi, magic bytes, ukuran)
-internal/storage/    baca/tulis file .enc
-internal/stats/      mean/median/stddev/throughput
+run.py                    menjalankan server
+bench.py                  benchmark CLI → CSV untuk laporan
+app/__init__.py           create_app(): konfigurasi Flask, error handler, header keamanan
+app/crypto.py             HKDF, AES-CTR, DES-CTR, RC4-drop, HMAC, entropi  ← inti tugas
+app/auth.py               bcrypt, validasi username/password, token session
+app/db.py                 semua query SQL (PyMySQL)
+app/schema.sql            definisi tabel
+app/filetype.py           validasi upload (ekstensi, magic bytes, ukuran)
+app/storage.py            baca/tulis file .enc
+app/stats.py              mean/median/stddev/throughput
+app/routes/               endpoint HTTP: auth, profile, files, bench
+tests/                    pytest: unit test + test end-to-end API
 ```
+
+## Alur enkripsi singkat
+- **Kunci:** `K_alg = HKDF-SHA256(SERVER_SECRET, salt=username, info="vault|"+alg)`. Hasilnya 32 byte untuk AES-256, 8 byte untuk DES, 16 byte untuk RC4, ditambah 32 byte kunci HMAC.
+- **AES & DES:** mode **CTR**. IV acak sepanjang satu blok (16 / 8 byte) per data dan dipakai sebagai counter awal.
+- **RC4:** nonce acak 16 byte per data. Kunci per data dihitung sebagai `SHA-256(K_rc4 ‖ nonce)[:16]`, lalu 3072 byte pertama keystream dibuang.
+- **Integritas:** `HMAC-SHA256(K_mac, alg ‖ iv ‖ aad ‖ ciphertext)`. `aad` adalah ID record. HMAC diverifikasi **sebelum** data didekripsi dan dikirim ke user.
 
 ## API
 Semua endpoint ada di bawah `/api`. Autentikasi memakai cookie `vault_session` (HttpOnly). Error dikembalikan sebagai `{"error": "..."}`. Parameter `alg` bernilai `AES`, `DES`, atau `RC4` (default `AES`).
@@ -68,7 +82,7 @@ Semua endpoint ada di bawah `/api`. Autentikasi memakai cookie `vault_session` (
 | `POST /auth/login` `{username, password}` | login (200) |
 | `POST /auth/logout` | logout (204) |
 | `GET /auth/me` | user aktif (401 kalau belum login) |
-| `GET /auth/session` | `{"user": {...}}` atau `{"user": null}`, selalu 200. Dipakai frontend saat halaman dimuat. |
+| `GET /auth/session` | `{"user": {...}}` atau `{"user": null}`, selalu 200 |
 | `PUT /profile` `{full_name, nik, …}` | simpan profil, dienkripsi 3× |
 | `GET /profile?alg=` | profil terdekripsi + waktu dekripsi + ciphertext (hex) |
 | `POST /files` multipart `category`, `file` | upload, dienkripsi 3× (201) |
@@ -102,12 +116,10 @@ Kode status yang perlu diketahui:
 
 ## Test
 ```bash
-go test ./... -race                       # unit test (crypto, filetype, stats)
-
-# integration test end-to-end (butuh MariaDB yang sedang jalan)
-VAULT_TEST_DSN='vault:vault@tcp(127.0.0.1:3306)/vault' go test ./internal/api -v
+pytest                                  # unit test (crypto, filetype, stats)
+VAULT_TEST=1 pytest -v                  # + test end-to-end API (butuh MariaDB & .env)
 ```
-Cakupan integration test:
+Cakupan test end-to-end:
 - register, login, dan logout
 - validasi profil
 - upload semua format; download dengan ketiga algoritma harus menghasilkan `sha256` yang sama dengan file asli
@@ -117,9 +129,11 @@ Cakupan integration test:
 - upload yang ditolak (400/413/415)
 - analisis, benchmark, dan hapus file
 
+Test kripto juga mencocokkan hasil dengan test vector resmi: NIST SP 800-38A untuk AES-CTR dan RFC 5869 untuk HKDF.
+
 ## Benchmark untuk laporan
 ```bash
-go run ./cmd/bench -runs 30 -sizes 1KB,100KB,1MB,10MB,100MB -out ../report
+python bench.py --runs 30 --sizes 1KB,100KB,1MB,10MB,100MB --out ../report
 ```
 Hasilnya:
 
@@ -129,4 +143,4 @@ Hasilnya:
 | `bench_summary.csv` | mean, median, stddev, min, max, throughput MB/s |
 | `cipher_analysis.csv` | entropi plaintext vs ciphertext (data nol, teks, acak), efek bit-flip, jarak Hamming dengan IV baru, dan pembanding ECB (tidak dipakai aplikasi) |
 
-Yang diukur hanya cipher-nya: setup stream (key schedule, RC4 drop) ditambah XOR keystream. I/O dan HMAC tidak ikut diukur, karena biayanya sama untuk ketiga algoritma.
+Yang diukur hanya cipher-nya: membuat objek cipher (key schedule, RC4 drop) ditambah XOR keystream. I/O dan HMAC tidak ikut diukur, karena biayanya sama untuk ketiga algoritma.
