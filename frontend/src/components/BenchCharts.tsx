@@ -40,6 +40,12 @@ function tooltipStyle(t: ChartTheme) {
 
 const msTick = (v: number) => `${formatNumber(v, v < 10 ? 2 : 0)} ms`
 
+/** Tick formatter with enough decimals that ticks across `span` ms stay distinct. */
+function msTickFor(span: number) {
+  const digits = span < 0.1 ? 3 : span < 1 ? 2 : span < 10 ? 1 : 0
+  return (v: number) => `${formatNumber(v, digits)} ms`
+}
+
 /** Horizontal bars of the mean time per algorithm, value at the bar tip. */
 export function MeanBarChart({ results, label }: { results: SeriesResult[]; label: string }) {
   const t = useChartTheme()
@@ -110,6 +116,8 @@ export function RunsSmallMultiples({ results }: { results: SeriesResult[] }) {
     <div className="multiples">
       {results.map((r) => {
         const data = r.samplesNs.map((ns, i) => ({ run: i + 1, ms: ns / 1e6 }))
+        const values = data.map((d) => d.ms)
+        const span = values.length ? Math.max(...values) - Math.min(...values) : 0
         const color = t.series[r.algorithm]
         return (
           <figure key={r.algorithm} className="chart">
@@ -129,7 +137,7 @@ export function RunsSmallMultiples({ results }: { results: SeriesResult[] }) {
                 <YAxis
                   width={64}
                   domain={['auto', 'auto']}
-                  tickFormatter={msTick}
+                  tickFormatter={msTickFor(span)}
                   tick={{ fill: t.muted, fontSize: 11 }}
                   stroke={t.axis}
                   tickLine={false}
