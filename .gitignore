@@ -6,7 +6,7 @@ context.md
 *.env.local
 
 # Encrypted file storage
-storage/
+/storage/
 *.enc
 
 # Go
