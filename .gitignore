@@ -1,5 +1,6 @@
-# Project context (local only)
-context.md
+# Local-only Markdown at the project root (context, brief, team notes, README).
+# Subfolder docs such as backend/README.md are still tracked.
+/*.md
 
 # Secrets
 .env
