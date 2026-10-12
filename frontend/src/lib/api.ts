@@ -1,4 +1,4 @@
-// Typed client for the Go API. Every request goes to /api on the same
+// Typed client for the backend API. Every request goes to /api on the same
 // origin (proxied by Vite in development) so the HttpOnly session cookie
 // is sent automatically.
 
