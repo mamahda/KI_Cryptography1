@@ -1,0 +1,51 @@
+# Usage:
+#   cp .env.example .env    # then fill in SERVER_SECRET and the passwords
+#   docker compose up -d --build
+# The app is served on http://localhost:${APP_PORT:-3000}.
+
+services:
+  db:
+    image: mariadb:11
+    restart: unless-stopped
+    environment:
+      MARIADB_DATABASE: ${DB_NAME:-vault}
+      MARIADB_USER: ${DB_USER:-vault}
+      MARIADB_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?set DB_ROOT_PASSWORD in .env}
+    volumes:
+      - db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    environment:
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_NAME: ${DB_NAME:-vault}
+      DB_USER: ${DB_USER:-vault}
+      DB_PASSWORD: ${DB_PASSWORD}
+      SERVER_SECRET: ${SERVER_SECRET:?set SERVER_SECRET in .env}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      SESSION_TTL_HOURS: ${SESSION_TTL_HOURS:-24}
+    volumes:
+      - storage:/data/storage
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    ports:
+      - "${APP_BIND:-127.0.0.1}:${APP_PORT:-3000}:80"
+    depends_on:
+      - backend
+
+volumes:
+  db-data:
+  storage:
