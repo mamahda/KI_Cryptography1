@@ -12,7 +12,7 @@ COPY . .
 
 # Encrypted files live in a volume mounted here; the directory is created with
 # the right owner so a fresh named volume inherits it.
-RUN useradd --system --uid 1000 vault \
+RUN useradd --system --create-home --uid 1000 vault \
     && mkdir -p /data/storage \
     && chown -R vault:vault /data/storage
 USER vault
