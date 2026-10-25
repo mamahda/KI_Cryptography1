@@ -1,0 +1,42 @@
+# Server secrets
+.env
+.env.*
+!.env.example
+
+# SQLite database
+/data/
+*.db
+*.db-wal
+*.db-shm
+*.sqlite3
+
+# Encrypted file storage and upload temp files
+/storage/
+*.enc
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+.ruff_cache/
+.mypy_cache/
+instance/
+
+# Frontend
+node_modules/
+dist/
+*.tsbuildinfo
+.vite/
+
+# Logs
+*.log
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
