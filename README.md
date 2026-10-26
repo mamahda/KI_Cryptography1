@@ -8,7 +8,7 @@ Platform web pendaftaran Schematics NIC (hackathon khusus mahasiswa) untuk Assig
 | --- | --- |
 | Pengguna | Peserta (ketua dan anggota tim), juri, superadmin |
 | Data yang disimpan | Data diri, scan KTP, scan KTM/KRSM, bukti twibbon, proposal (PDF), video demo (MP4), link GitHub |
-| Tech stack | React, Python Flask, SQLite, PyCryptodome; sesi memakai JWT di cookie |
+| Tech stack | React, Python FastAPI, SQLite, PyCryptodome; sesi memakai JWT di cookie |
 | Kontrak API | Dokumentasi API |
 | Di luar cakupan | Penilaian juri, pembayaran, verifikasi email, masa retensi, deployment produksi |
 
@@ -121,24 +121,57 @@ Enkripsi dilakukan di server: browser hanya menampilkan data, dan setiap data wa
 | Komponen | Pilihan | Alasan |
 | --- | --- | --- |
 | Frontend | React + Vite | Terpisah dari API, sehingga semua aturan akses ada di backend |
-| Backend | Flask, satu blueprint per modul | Python, sehingga PyCryptodome langsung dipakai; blueprint memetakan modul ke anggota |
+| Backend | FastAPI, satu router per modul | Python, sehingga PyCryptodome langsung dipakai; `APIRouter` memetakan modul ke anggota |
 | Database | SQLite, mode WAL | Satu file tanpa server terpisah, cukup untuk satu lomba |
 | Kriptografi | PyCryptodome + `hmac`/`hashlib` bawaan | Menyediakan AES, DES, ARC4, GCM, dan HKDF dalam satu library |
 | Password | argon2-cffi | Hash Argon2id |
-| Sesi | flask-jwt-extended, JWT di cookie HttpOnly + token CSRF double-submit | Token tidak bisa dibaca JavaScript; request yang mengubah data wajib membawa header CSRF |
-| Rate limit | Flask-Limiter | Login dan percobaan kode tim |
+| Sesi | PyJWT, JWT di cookie HttpOnly + token CSRF double-submit | Token tidak bisa dibaca JavaScript; request yang mengubah data wajib membawa header CSRF |
+| Rate limit | slowapi | Login dan percobaan kode tim |
 
-Saat pengembangan, Vite mem-proxy `/api` ke Flask agar frontend dan backend satu origin, sehingga cookie bekerja tanpa pengaturan CORS.
+Saat pengembangan, Vite mem-proxy `/api` ke FastAPI (Uvicorn) agar frontend dan backend satu origin, sehingga cookie bekerja tanpa pengaturan CORS.
 
-### Konfigurasi
+### Struktur folder
 
-Salin `.env.example` menjadi `.env`, lalu isi `ROOT_KEY` dan `JWT_SECRET_KEY`. File `.env` tidak boleh masuk repo; kehilangan atau mengganti `ROOT_KEY` membuat semua data tersimpan tidak bisa dibuka.
+`frontend/` dan `backend/` masing-masing folder sendiri yang berdiri sendiri (dependency, config, dan cara jalan tidak saling bergantung). Di dalam `backend/`:
+
+```
+backend/
+  run.py              # entry point: python run.py
+  requirements.txt
+  .env / .env.example
+  app/
+    main.py           # bikin FastAPI app, daftarkan router, lifespan (migration otomatis)
+    dependencies.py   # dependency bersama antar router (misal koneksi DB)
+    core/
+      config.py       # Settings dari .env
+      security.py     # JWT cookie + CSRF double-submit
+      crypto_helpers.py  # blind index email
+    db/
+      database.py     # koneksi SQLite + migration runner
+      migrations/     # file SQL bernomor
+    routers/
+      auth.py, privacy.py, profile.py, documents.py, teams.py, items.py, judges.py, admin.py
+```
+
+Pola `app/main.py` + `app/dependencies.py` + `app/routers/` ini mengikuti struktur resmi dari [dokumentasi FastAPI "Bigger Applications"](https://fastapi.tiangolo.com/tutorial/bigger-applications/); `core/` dan `db/` ditambahkan untuk memisahkan config/sesi dan lapisan database.
+
+### Konfigurasi dan menjalankan backend
+
+Salin `backend/.env.example` menjadi `backend/.env`, lalu isi `ROOT_KEY` dan `JWT_SECRET_KEY`. File `.env` tidak boleh masuk repo; kehilangan atau mengganti `ROOT_KEY` membuat semua data tersimpan tidak bisa dibuka.
 
 ```sh
+cd backend
 cp .env.example .env
-python -c "import secrets, base64; print(base64.b64encode(secrets.token_bytes(32)).decode())"  # ROOT_KEY
-python -c "import secrets; print(secrets.token_urlsafe(32))"                                  # JWT_SECRET_KEY
+python -c "import secrets, base64; print(base64.b64encode(secrets.token_bytes(32)).decode())"  # ROOT_KEY, isi ke .env
+python -c "import secrets; print(secrets.token_urlsafe(32))"                                  # JWT_SECRET_KEY, isi ke .env
+
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+python run.py
 ```
+
+Migration berjalan otomatis saat startup. `data/schematics.db` dan `storage/` dibuat di root repo (sibling dari `backend/` dan `frontend/`), bukan di dalam `backend/`. Server ada di `http://127.0.0.1:8000`, dokumentasi endpoint interaktif di `/docs`.
 
 ### Batas model ancaman
 
@@ -148,7 +181,7 @@ python -c "import secrets; print(secrets.token_urlsafe(32))"                    
 
 ## Model data
 
-SQLite menyimpan tabel akun, tim, data terenkripsi, akses, dan benchmark; inti enkripsinya adalah `items` (satu baris per data atau file) dan `ciphertexts` (tiga baris per item, satu per cipher). Migration ada di `backend/database/migrations/`; terapkan semua migration yang belum berjalan dengan `python -c "from backend.database.database import migrate_db; migrate_db('data/schematics.db')"`. Setiap perubahan skema baru dibuat sebagai file SQL bernomor berikutnya; migration yang sudah diterapkan jangan diedit.
+SQLite menyimpan tabel akun, tim, data terenkripsi, akses, dan benchmark; inti enkripsinya adalah `items` (satu baris per data atau file) dan `ciphertexts` (tiga baris per item, satu per cipher). Migration ada di `backend/app/db/migrations/`, dan dijalankan otomatis setiap server start (lihat `backend/app/main.py`). Setiap perubahan skema baru dibuat sebagai file SQL bernomor berikutnya; migration yang sudah diterapkan jangan diedit.
 
 | Tabel | Kolom penting | Catatan |
 | --- | --- | --- |
@@ -211,7 +244,7 @@ Modul kripto dikerjakan paling awal, sementara frontend langsung bekerja dengan 
 | Anggota | Fokus |
 | --- | --- |
 | A | `crypto_service`, pembungkusan kunci, unit test kripto |
-| B | Backend Flask: auth, profil, dokumen, tim, items, juri, admin |
+| B | Backend FastAPI: auth, profil, dokumen, tim, items, juri, admin |
 | C | Frontend React: semua halaman, awalnya memakai mock sesuai Dokumentasi API |
 | D | Skrip dan dashboard benchmark, laporan 2 halaman |
 
@@ -248,13 +281,13 @@ Semua keputusan sudah final, dan kolom justifikasi bisa langsung diringkas untuk
 | Peserta di bawah 18 tahun | Tidak ditolak otomatis; superadmin memutuskan manual | Kelayakan sepenuhnya keputusan panitia; platform hanya menandai usia |
 | Verifikasi email dan retensi | Tidak ada | Di luar fokus tugas kuliah |
 | Penilaian | Di luar platform | Platform tidak perlu menyimpan nilai |
-| Tech stack | React, Flask, SQLite | Flask memakai Python sehingga PyCryptodome langsung dipakai; SQLite cukup tanpa server database |
+| Tech stack | React, FastAPI, SQLite | FastAPI memakai Python sehingga PyCryptodome langsung dipakai; SQLite cukup tanpa server database |
 
 ## Risiko dan sumber
 
 | Risiko | Penanganan |
 | --- | --- |
-| Werkzeug menulis upload di atas sekitar 500 KB ke file sementara, sehingga plaintext sempat ada di disk | Unggahan dikirim sebagai body mentah dan dibaca dari `request.stream` per chunk |
+| Middleware ASGI atau proxy menyangga body request ke disk, sehingga plaintext sempat ada di disk | Unggahan dibaca langsung dari `request.stream()` Starlette per chunk, tanpa `UploadFile` bawaan yang menyangga ke `SpooledTemporaryFile` |
 | Root key ikut ter-commit | `.env` di `.gitignore`; cek sebelum push |
 | Kunci atau nonce terpakai ulang saat edit | Setiap penulisan membangkitkan kunci baru; diuji otomatis |
 | SQLite "database is locked" menjelang deadline | Mode WAL, transaksi pendek, retry |
@@ -266,4 +299,5 @@ Semua keputusan sudah final, dan kolom justifikasi bisa langsung diringkas untuk
 - [UU Nomor 27 Tahun 2022 tentang Pelindungan Data Pribadi (Pasal.id)](https://pasal.id/)
 - [OWASP Password Storage Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html)
 - [Dokumentasi PyCryptodome](https://www.pycryptodome.org/)
-- [Opsi konfigurasi flask-jwt-extended](https://flask-jwt-extended.readthedocs.io/en/stable/options.html)
+- [Dokumentasi FastAPI](https://fastapi.tiangolo.com/)
+- [PyJWT](https://pyjwt.readthedocs.io/)
