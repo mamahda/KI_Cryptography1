@@ -95,6 +95,7 @@ export interface Me {
   role: UserRole
   full_name: string | null
   verification_status: VerificationStatus | null
+  verification_note?: string | null
   consent: ConsentInfo | null
   current_policy_version: string
   team: MeTeamSummary | null
@@ -221,6 +222,7 @@ export interface ParticipantProfile {
   is_minor: boolean | null
   profile_complete: boolean
   verification_status: VerificationStatus
+  verification_note?: string | null
 }
 
 export interface UpdateProfileRequest {

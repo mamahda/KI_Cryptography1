@@ -21,6 +21,7 @@ import { BenchmarksPage } from './pages/admin/BenchmarksPage'
 import { ConsentPage } from './pages/auth/ConsentPage'
 import { LoginPage } from './pages/auth/LoginPage'
 import { RegisterPage } from './pages/auth/RegisterPage'
+import { ParticipantDashboardPage } from './pages/participant/ParticipantDashboardPage'
 import { useAuthStore } from './stores/authStore'
 import { useUiStore } from './stores/uiStore'
 
@@ -309,15 +310,7 @@ export function AppRoutes() {
           {/* Participant routes (require peserta role + latest privacy consent) */}
           <Route element={<RoleGuard allowedRoles={['peserta']} />}>
             <Route element={<ConsentGuard />}>
-              <Route
-                path="/dashboard"
-                element={
-                  <RoutePlaceholder
-                    title="Participant Dashboard"
-                    description="Verification status, deadline countdown, and profile overview (Phase 2)."
-                  />
-                }
-              />
+              <Route path="/dashboard" element={<ParticipantDashboardPage />} />
               <Route
                 path="/profile"
                 element={

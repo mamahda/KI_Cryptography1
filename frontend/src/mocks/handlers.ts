@@ -1,6 +1,15 @@
 import { http, HttpResponse } from 'msw'
 import { CSRF_COOKIE_NAME, CSRF_HEADER_NAME } from '../api/csrf'
-import { DOCUMENT_TYPES, type ConsentInfo, type DocumentType, type Me } from '../api/types'
+import {
+  DOCUMENT_TYPES,
+  type ConsentInfo,
+  type DocumentType,
+  type ItemMeta,
+  type Me,
+  type ParticipantDocumentsResponse,
+  type ParticipantProfile,
+  type Team,
+} from '../api/types'
 
 export const DEFAULT_MOCK_SETTINGS = {
   registration_deadline: '2026-11-20T23:59:00+07:00',
@@ -32,26 +41,196 @@ Panitia Schematics NIC mengumpulkan dan melindungi data pendaftaran peserta sesu
 interface MockAccountRecord {
   password: string
   user: Me
+  profile: ParticipantProfile
+  documents: ParticipantDocumentsResponse
+  team: Team | null
+}
+
+function createEmptyProfile(): ParticipantProfile {
+  return {
+    full_name: null,
+    nim: null,
+    study_program: null,
+    institution: null,
+    birth_date: null,
+    domicile: null,
+    phone: null,
+    age: null,
+    is_minor: null,
+    profile_complete: false,
+    verification_status: 'belum_lengkap',
+    verification_note: null,
+  }
+}
+
+function createEmptyDocuments(): ParticipantDocumentsResponse {
+  return {
+    ktp: null,
+    ktm: null,
+    twibbon: null,
+    documents_complete: false,
+  }
 }
 
 function createInitialAccounts(policyVersion: string): Map<string, MockAccountRecord> {
   const map = new Map<string, MockAccountRecord>()
 
+  const budiId = 'b1a7c2d4-5e6f-4a8b-9c0d-1e2f3a4b5c6d'
+  const budiTeam: Team = {
+    id: '9c8b7a6d-5e4f-4321-8765-0fedcba98765',
+    name: 'Tim Garuda',
+    code: 'K7M2Q9XA',
+    status: 'draft',
+    leader_id: budiId,
+    created_at: '2026-10-27T08:00:00+07:00',
+    finalized_at: null,
+    members: [
+      {
+        user_id: budiId,
+        full_name: 'Budi Santoso',
+        is_leader: true,
+        profile_complete: true,
+        documents_complete: true,
+      },
+      {
+        user_id: 'd4e5f6a7-1111-4222-8333-444455556666',
+        full_name: 'Sari Dewi',
+        is_leader: false,
+        profile_complete: true,
+        documents_complete: false,
+      },
+    ],
+    submission: {
+      proposal: null,
+      video: null,
+      repo_url: null,
+    },
+    finalize_missing: ['proposal', 'video', 'repo_url', 'members_incomplete'],
+  }
+
   map.set('budi@mahasiswa.ac.id', {
     password: 'rahasia-panjang-123',
     user: {
-      id: 'b1a7c2d4-5e6f-4a8b-9c0d-1e2f3a4b5c6d',
+      id: budiId,
       email: 'budi@mahasiswa.ac.id',
       role: 'peserta',
       full_name: 'Budi Santoso',
       verification_status: 'menunggu',
+      verification_note: null,
       consent: {
         policy_version: policyVersion,
         agreed_at: '2026-10-26T09:00:00+07:00',
       },
       current_policy_version: policyVersion,
+      team: {
+        id: budiTeam.id,
+        name: budiTeam.name,
+        status: budiTeam.status,
+        is_leader: true,
+      },
+    },
+    profile: {
+      full_name: 'Budi Santoso',
+      nim: '5025231001',
+      study_program: 'Teknik Informatika',
+      institution: 'Institut Teknologi Sepuluh Nopember',
+      birth_date: '2005-03-14',
+      domicile: 'Surabaya',
+      phone: '081234567890',
+      age: 21,
+      is_minor: false,
+      profile_complete: true,
+      verification_status: 'menunggu',
+      verification_note: null,
+    },
+    documents: {
+      ktp: {
+        item_id: '3f6c1e2a-8b4d-4c1f-9e7a-2b5d8c0f1a93',
+        field: 'ktp',
+        content_type: 'image/jpeg',
+        size_bytes: 482_113,
+        original_filename: 'ktp-budi.jpg',
+        uploaded_at: '2026-10-26T10:15:00+07:00',
+      },
+      ktm: {
+        item_id: '4a7d2f3b-9c5e-4d2a-8f8b-3c6e9d1a2b04',
+        field: 'ktm',
+        content_type: 'application/pdf',
+        size_bytes: 612_400,
+        original_filename: 'ktm-budi.pdf',
+        uploaded_at: '2026-10-26T10:17:00+07:00',
+      },
+      twibbon: {
+        item_id: '5b8e3a4c-0d6f-4e3b-9a9c-4d7f0e2b3c15',
+        field: 'twibbon',
+        content_type: 'image/png',
+        size_bytes: 924_110,
+        original_filename: 'twibbon-budi.png',
+        uploaded_at: '2026-10-26T10:20:00+07:00',
+      },
+      documents_complete: true,
+    },
+    team: budiTeam,
+  })
+
+  map.set('ditolak@mahasiswa.ac.id', {
+    password: 'rahasia-panjang-123',
+    user: {
+      id: 'f1e2d3c4-b5a6-4789-8012-3456789abcde',
+      email: 'ditolak@mahasiswa.ac.id',
+      role: 'peserta',
+      full_name: 'Rina Wijaya',
+      verification_status: 'ditolak',
+      verification_note: 'Scan KTM tidak terbaca, mohon unggah ulang dokumen yang jelas.',
+      consent: {
+        policy_version: policyVersion,
+        agreed_at: '2026-10-26T09:30:00+07:00',
+      },
+      current_policy_version: policyVersion,
       team: null,
     },
+    profile: {
+      full_name: 'Rina Wijaya',
+      nim: '5025231099',
+      study_program: 'Sistem Informasi',
+      institution: 'Universitas Contoh',
+      birth_date: '2005-07-22',
+      domicile: 'Malang',
+      phone: '081298765432',
+      age: 21,
+      is_minor: false,
+      profile_complete: true,
+      verification_status: 'ditolak',
+      verification_note: 'Scan KTM tidak terbaca, mohon unggah ulang dokumen yang jelas.',
+    },
+    documents: {
+      ktp: {
+        item_id: '6c9f4b5d-1e70-4f4c-8b0d-5e801f3c4d26',
+        field: 'ktp',
+        content_type: 'image/jpeg',
+        size_bytes: 350_000,
+        original_filename: 'ktp-rina.jpg',
+        uploaded_at: '2026-10-26T11:00:00+07:00',
+      },
+      ktm: {
+        item_id: '7d0a5c6e-2f81-405d-9c1e-6f912a4d5e37',
+        field: 'ktm',
+        content_type: 'image/jpeg',
+        size_bytes: 280_000,
+        original_filename: 'ktm-rina-blur.jpg',
+        uploaded_at: '2026-10-26T11:02:00+07:00',
+      },
+      twibbon: {
+        item_id: '8e1b6d7f-3092-416e-8d2f-70a23b5e6f48',
+        field: 'twibbon',
+        content_type: 'image/png',
+        size_bytes: 510_000,
+        original_filename: 'twibbon-rina.png',
+        uploaded_at: '2026-10-26T11:05:00+07:00',
+      },
+      documents_complete: true,
+    },
+    team: null,
   })
 
   map.set('baru@mahasiswa.ac.id', {
@@ -62,10 +241,14 @@ function createInitialAccounts(policyVersion: string): Map<string, MockAccountRe
       role: 'peserta',
       full_name: null,
       verification_status: 'belum_lengkap',
+      verification_note: null,
       consent: null,
       current_policy_version: policyVersion,
       team: null,
     },
+    profile: createEmptyProfile(),
+    documents: createEmptyDocuments(),
+    team: null,
   })
 
   map.set('juri1@panitia.id', {
@@ -80,6 +263,9 @@ function createInitialAccounts(policyVersion: string): Map<string, MockAccountRe
       current_policy_version: policyVersion,
       team: null,
     },
+    profile: createEmptyProfile(),
+    documents: createEmptyDocuments(),
+    team: null,
   })
 
   map.set('admin@panitia.id', {
@@ -94,6 +280,9 @@ function createInitialAccounts(policyVersion: string): Map<string, MockAccountRe
       current_policy_version: policyVersion,
       team: null,
     },
+    profile: createEmptyProfile(),
+    documents: createEmptyDocuments(),
+    team: null,
   })
 
   return map
@@ -167,6 +356,63 @@ function getAuthenticatedRecord(): MockAccountRecord | null {
     return null
   }
   return mockState.accounts.get(mockState.activeEmail) ?? null
+}
+
+function requirePesertaWithConsent(
+  record: MockAccountRecord | null,
+): { ok: true; record: MockAccountRecord } | { ok: false; response: Response } {
+  if (!record) {
+    return {
+      ok: false,
+      response: HttpResponse.json(
+        {
+          error: {
+            code: 'unauthenticated',
+            message: 'Sesi belum aktif atau sudah kedaluwarsa',
+            details: {},
+          },
+        },
+        { status: 401 },
+      ),
+    }
+  }
+
+  if (record.user.role !== 'peserta') {
+    return {
+      ok: false,
+      response: HttpResponse.json(
+        {
+          error: {
+            code: 'forbidden',
+            message: 'Endpoint khusus peserta',
+            details: {},
+          },
+        },
+        { status: 403 },
+      ),
+    }
+  }
+
+  if (
+    !record.user.consent ||
+    record.user.consent.policy_version !== mockState.policyVersion
+  ) {
+    return {
+      ok: false,
+      response: HttpResponse.json(
+        {
+          error: {
+            code: 'consent_required',
+            message: 'Peserta belum menyetujui kebijakan privasi terbaru',
+            details: {},
+          },
+        },
+        { status: 403 },
+      ),
+    }
+  }
+
+  return { ok: true, record }
 }
 
 function verifyCsrf(request: Request): Response | null {
@@ -270,6 +516,7 @@ export const handlers = [
       role: 'peserta',
       full_name: null,
       verification_status: 'belum_lengkap',
+      verification_note: null,
       consent: null,
       current_policy_version: mockState.policyVersion,
       team: null,
@@ -278,6 +525,9 @@ export const handlers = [
     mockState.accounts.set(rawEmail, {
       password: rawPassword,
       user: newUser,
+      profile: createEmptyProfile(),
+      documents: createEmptyDocuments(),
+      team: null,
     })
 
     const { user, csrfCookieHeader } = issueSessionForEmail(rawEmail)
@@ -433,6 +683,22 @@ export const handlers = [
     return HttpResponse.json(consent, { status: 201 })
   }),
 
+  http.get('*/api/profile', () => {
+    const guard = requirePesertaWithConsent(getAuthenticatedRecord())
+    if (!guard.ok) {
+      return guard.response
+    }
+    return HttpResponse.json(guard.record.profile, { status: 200 })
+  }),
+
+  http.get('*/api/documents', () => {
+    const guard = requirePesertaWithConsent(getAuthenticatedRecord())
+    if (!guard.ok) {
+      return guard.response
+    }
+    return HttpResponse.json(guard.record.documents, { status: 200 })
+  }),
+
   http.post('*/api/documents/:type', async ({ request, params }) => {
     const record = getAuthenticatedRecord()
     if (!record) {
@@ -467,20 +733,9 @@ export const handlers = [
       )
     }
 
-    if (
-      !record.user.consent ||
-      record.user.consent.policy_version !== mockState.policyVersion
-    ) {
-      return HttpResponse.json(
-        {
-          error: {
-            code: 'consent_required',
-            message: 'Peserta belum menyetujui kebijakan privasi terbaru',
-            details: {},
-          },
-        },
-        { status: 403 },
-      )
+    const guard = requirePesertaWithConsent(record)
+    if (!guard.ok) {
+      return guard.response
     }
 
     const rawBytes = await request.arrayBuffer()
@@ -505,18 +760,46 @@ export const handlers = [
       originalFilename = encodedFilename
     }
 
+    const newItem: ItemMeta = {
+      item_id: `11111111-2222-4333-8444-${String(++mockState.nextIdCounter).padStart(12, '0')}`,
+      field: docType,
+      content_type: 'application/pdf',
+      size_bytes: rawBytes.byteLength,
+      original_filename: originalFilename,
+      uploaded_at: new Date().toISOString(),
+    }
+
+    record.documents = {
+      ...record.documents,
+      [docType]: newItem,
+    }
+    const docsComplete = Boolean(
+      record.documents.ktp && record.documents.ktm && record.documents.twibbon,
+    )
+    record.documents.documents_complete = docsComplete
+
+    if (docsComplete && record.profile.profile_complete) {
+      record.profile.verification_status = 'menunggu'
+      record.profile.verification_note = null
+      record.user.verification_status = 'menunggu'
+      record.user.verification_note = null
+    }
+
     return HttpResponse.json(
       {
-        item_id: `11111111-2222-4333-8444-${String(++mockState.nextIdCounter).padStart(12, '0')}`,
-        field: docType,
-        content_type: 'application/pdf',
-        size_bytes: rawBytes.byteLength,
-        original_filename: originalFilename,
-        uploaded_at: new Date().toISOString(),
-        verification_status: record.user.verification_status ?? 'belum_lengkap',
+        ...newItem,
+        verification_status: record.profile.verification_status,
       },
       { status: 201 },
     )
+  }),
+
+  http.get('*/api/teams/me', () => {
+    const guard = requirePesertaWithConsent(getAuthenticatedRecord())
+    if (!guard.ok) {
+      return guard.response
+    }
+    return HttpResponse.json({ team: guard.record.team }, { status: 200 })
   }),
 
   http.get('*/api/admin/benchmarks', () => {

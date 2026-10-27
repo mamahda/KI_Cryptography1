@@ -1,6 +1,7 @@
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
+import { seedMockActiveSession } from './mocks/handlers'
 import { AppRoutes } from './router'
 import { useAuthStore } from './stores/authStore'
 import { useUiStore } from './stores/uiStore'
@@ -54,20 +55,9 @@ describe('Application Shell & Core Routing', () => {
     ).toBeInTheDocument()
   })
 
-  it('reflects Zustand auth and UI notice state in the application shell', () => {
-    useAuthStore.getState().setSessionUser({
-      id: 'b1a7c2d4-5e6f-4a8b-9c0d-1e2f3a4b5c6d',
-      email: 'budi@mahasiswa.ac.id',
-      role: 'peserta',
-      full_name: 'Budi Santoso',
-      verification_status: 'menunggu',
-      consent: {
-        policy_version: '1.0',
-        agreed_at: '2026-10-26T09:00:00+07:00',
-      },
-      current_policy_version: '1.0',
-      team: null,
-    })
+  it('reflects Zustand auth and UI notice state in the application shell', async () => {
+    const sessionUser = seedMockActiveSession('budi@mahasiswa.ac.id')!
+    useAuthStore.getState().setSessionUser(sessionUser)
     useUiStore.getState().pushNotice({
       variant: 'info',
       message: 'Session hydrated',
@@ -80,6 +70,10 @@ describe('Application Shell & Core Routing', () => {
     expect(screen.getByTestId('session-badge')).toHaveTextContent(
       'budi@mahasiswa.ac.id (peserta)',
     )
+    await waitFor(() => {
+      expect(screen.queryByTestId('dashboard-loading')).not.toBeInTheDocument()
+    })
     expect(screen.getByRole('status')).toHaveTextContent('Session hydrated')
+    expect(screen.getByTestId('verification-status-card')).toBeInTheDocument()
   })
 })
