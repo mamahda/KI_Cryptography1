@@ -11,6 +11,9 @@ from Crypto.Cipher import ARC4
 
 from ._mac import compute_tag, verify_tag
 from .base import CipherSuite, EncryptedPayload
+from ._mac import compute_tag, verify_tag
+from .errors import IntegrityError
+from .timing import Timings, measure
 
 NAME = "rc4"
 ENC_KEY_LEN = 16

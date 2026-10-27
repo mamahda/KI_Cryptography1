@@ -14,7 +14,7 @@ function SafePolicyMarkdown({ markdown }: { markdown: string }) {
   const lines = markdown.split(/\r?\n/)
 
   return (
-    <div className="space-y-2.5 text-sm leading-relaxed text-zinc-300">
+    <div className="space-y-2.5 text-sm leading-relaxed text-slate-300">
       {lines.map((rawLine, index) => {
         const line = rawLine.trim()
         if (!line) {
@@ -137,17 +137,17 @@ export function ConsentPage() {
 
   return (
     <div className="mx-auto max-w-2xl">
-      <section className="rounded-xl border border-[#222] bg-[#121212] p-6 shadow-[0_10px_40px_rgba(0,0,0,0.8)] sm:p-8">
-        <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#222] pb-4">
+      <section className="rounded-2xl border border-[#243049] bg-[#141d2e] p-6 shadow-[0_18px_50px_rgba(0,0,0,0.45)] sm:p-8">
+        <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#243049] pb-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full border border-[#333] bg-[#111] text-white">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full border border-[#243049] bg-[#0e1626] text-white">
               <FileCheck2 className="h-5 w-5" aria-hidden="true" />
             </div>
             <div>
               <h1 className="text-xl font-bold text-white">
                 Pemberitahuan Privasi &amp; Persetujuan Eksplisit
               </h1>
-              <p className="text-xs text-zinc-400">
+              <p className="text-xs text-slate-400">
                 UU Pelindungan Data Pribadi Pasal 20 — Wajib disetujui sebelum mengisi profil &amp;
                 dokumen
               </p>
@@ -157,7 +157,7 @@ export function ConsentPage() {
           {policyQuery.data && (
             <span
               data-testid="policy-version-badge"
-              className="rounded-full border border-[#333] bg-black px-3 py-1 text-xs font-semibold text-zinc-200"
+              className="rounded-full border border-[#243049] bg-[#0e1626] px-3 py-1 text-xs font-semibold text-slate-200"
             >
               Versi {policyQuery.data.version}
             </span>
@@ -168,7 +168,7 @@ export function ConsentPage() {
           <div
             role="alert"
             data-testid="policy-outdated-alert"
-            className="mt-4 flex items-start gap-2.5 rounded-lg border border-amber-500/40 bg-amber-950/50 px-4 py-3 text-sm text-amber-200"
+            className="mt-4 flex items-start gap-2.5 rounded-xl border border-amber-500/40 bg-amber-950/50 px-4 py-3 text-sm text-amber-200"
           >
             <RefreshCw className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" aria-hidden="true" />
             <span>{outdatedNotice}</span>
@@ -179,7 +179,7 @@ export function ConsentPage() {
           <div
             role="alert"
             data-testid="consent-error-alert"
-            className="mt-4 flex items-start gap-2.5 rounded-lg border border-rose-500/40 bg-rose-950/50 px-4 py-3 text-sm text-rose-200"
+            className="mt-4 flex items-start gap-2.5 rounded-xl border border-rose-500/40 bg-rose-950/50 px-4 py-3 text-sm text-rose-200"
           >
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-400" aria-hidden="true" />
             <span>{submitError}</span>
@@ -190,7 +190,7 @@ export function ConsentPage() {
           {policyQuery.isLoading && (
             <div
               role="status"
-              className="rounded-lg border border-[#222] bg-black p-6 text-center text-sm text-zinc-400"
+              className="rounded-xl border border-[#243049] bg-[#0e1626] p-6 text-center text-sm text-slate-400"
             >
               Memuat teks pemberitahuan privasi terbaru...
             </div>
@@ -199,13 +199,13 @@ export function ConsentPage() {
           {policyQuery.isError && (
             <div
               role="alert"
-              className="rounded-lg border border-rose-500/40 bg-rose-950/50 p-4 text-sm text-rose-200"
+              className="rounded-xl border border-rose-500/40 bg-rose-950/50 p-4 text-sm text-rose-200"
             >
               <p>Gagal memuat dokumen pemberitahuan privasi dari server.</p>
               <button
                 type="button"
                 onClick={() => void policyQuery.refetch()}
-                className="mt-3 inline-flex items-center gap-1.5 rounded-md border border-rose-500/40 bg-black px-3 py-1.5 text-xs font-semibold text-rose-200 hover:bg-rose-950"
+                className="mt-3 inline-flex items-center gap-1.5 rounded-xl border border-rose-500/40 bg-[#0e1626] px-3 py-1.5 text-xs font-semibold text-rose-200 hover:bg-rose-950"
               >
                 <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
                 Coba Muat Ulang
@@ -217,23 +217,23 @@ export function ConsentPage() {
             <form onSubmit={handleSubmit} className="space-y-5">
               <div
                 data-testid="policy-markdown-box"
-                className="max-h-80 overflow-y-auto rounded-lg border border-[#333] bg-black p-4"
+                className="max-h-80 overflow-y-auto rounded-xl border border-[#243049] bg-[#0e1626] p-4"
               >
                 <SafePolicyMarkdown markdown={policyQuery.data.text_markdown} />
               </div>
 
               <label
                 htmlFor="consent-checkbox"
-                className="flex cursor-pointer items-start gap-3 rounded-lg border border-[#333] bg-black/60 p-3.5 transition hover:border-zinc-500"
+                className="flex cursor-pointer items-start gap-3 rounded-xl border border-[#243049] bg-[#0e1626]/60 p-3.5 transition hover:border-cyan-400/60"
               >
                 <input
                   id="consent-checkbox"
                   type="checkbox"
                   checked={agreed}
                   onChange={(e) => setAgreed(e.target.checked)}
-                  className="mt-0.5 h-4 w-4 rounded border-zinc-600 bg-black text-white focus:ring-zinc-400"
+                  className="mt-0.5 h-4 w-4 rounded border-zinc-600 bg-[#0e1626] text-white focus:ring-zinc-400"
                 />
-                <span className="text-sm text-zinc-300">
+                <span className="text-sm text-slate-300">
                   Saya telah membaca, memahami, dan secara eksplisit menyetujui pemrosesan serta
                   enkripsi data pribadi saya sesuai Pemberitahuan Privasi Schematics NIC{' '}
                   <strong className="text-white">versi {policyQuery.data.version}</strong>.

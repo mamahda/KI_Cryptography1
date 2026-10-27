@@ -11,6 +11,7 @@ from uuid import uuid4
 
 from app.core.crypto import get_crypto_service
 from app.crypto_services import SealedCiphertext
+from app.benchmarking import record_live
 
 
 class CiphertextNotFound(LookupError):
@@ -27,10 +28,16 @@ def store_ciphertexts(
 ) -> None:
     """Enkripsi `plaintext` dengan semua cipher aktif dan simpan tiap hasilnya."""
     crypto = get_crypto_service()
+    item = db.execute("SELECT field FROM items WHERE id = ?", (item_id,)).fetchone()
+    if item is None:
+        raise CiphertextNotFound("Item belum tersimpan")
     written: list[Path] = []
     try:
         for cipher in crypto.ciphers:
-            sealed = crypto.seal(plaintext, cipher=cipher, context=item_id)
+            timings = []
+            sealed = crypto.seal(
+                plaintext, cipher=cipher, context=item_id, timings=timings
+            )
             row_id = str(uuid4())
             blob, path = sealed.ciphertext, None
             if storage == "fs":
@@ -56,6 +63,14 @@ def store_ciphertexts(
                     blob,
                     path,
                 ),
+            )
+            record_live(
+                db,
+                timings=timings,
+                cipher=cipher,
+                field=item["field"],
+                size_bytes=len(plaintext),
+                nonce_bytes=len(sealed.nonce or b""),
             )
     except Exception:
         for target in written:  # jangan tinggalkan file yatim kalau gagal di tengah
@@ -85,7 +100,9 @@ def load_plaintext(
 ) -> bytes:
     rows = db.execute("SELECT * FROM ciphertexts WHERE item_id = ?", (item_id,)).fetchall()
     row = _pick_row(rows, cipher)
-    data = row["blob"] if row["path"] is None else (storage_dir / row["path"]).read_bytes()
+    data = (
+        row["blob"] if row["path"] is None else (storage_dir / row["path"]).read_bytes()
+    )
     sealed = SealedCiphertext(
         cipher=row["cipher"],
         nonce=row["nonce"],
@@ -96,7 +113,18 @@ def load_plaintext(
         hmac_tag=row["hmac_tag"],
         ciphertext=data,
     )
-    return get_crypto_service().open(sealed, context=item_id)
+    timings = []
+    plaintext = get_crypto_service().open(sealed, context=item_id, timings=timings)
+    record_live(
+        db,
+        timings=timings,
+        cipher=row["cipher"],
+        field=row["field"],
+        size_bytes=len(plaintext),
+        nonce_bytes=len(sealed.nonce or b""),
+        legacy_rc4=row["cipher"] == "rc4" and not row["hmac_tag"],
+    )
+    return plaintext
 
 
 def delete_ciphertexts(

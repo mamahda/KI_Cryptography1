@@ -3,15 +3,14 @@ import {
   AlertCircle,
   AlertTriangle,
   ArrowRight,
+  Check,
   CheckCircle2,
   Clock,
   FileCheck2,
-  FileText,
+  Minus,
   RefreshCw,
   ShieldCheck,
-  UserCheck,
   Users,
-  Video,
   XCircle,
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
@@ -25,7 +24,30 @@ import {
   formatDeadlineDisplay,
   useLiveNow,
 } from '@/lib/countdown'
+import { DocumentsSection } from '@/pages/participant/sections/DocumentsSection'
+import { TeamSection } from '@/pages/participant/sections/TeamSection'
+import { VideoSection } from '@/pages/participant/sections/VideoSection'
 import { useAuthStore } from '@/stores/authStore'
+
+/**
+ * Dashboard surfaces use two depths only. Cards are *elevated* (`#121212`) and
+ * advance toward the reader; inset rows and quick-nav tiles are *recessed*
+ * (black) and fall back. Muted text bottoms out at `zinc-400` (7.31:1 on an
+ * elevated card, 8.19:1 on a recessed one) — `zinc-500` is 3.88:1 and is never
+ * used for text or glyphs.
+ *
+ * Monospaced, tabular figures mark a value the server computed or verified:
+ * the countdown, the policy version, the invite code, readiness counts. Prose
+ * stays in the sans face.
+ */
+const CARD =
+  'rounded-2xl border border-[#243049] bg-[#141d2e] shadow-[0_18px_50px_rgba(0,0,0,0.45)]'
+const WELL = 'rounded-xl border border-[#243049] bg-[#0e1626]'
+const FOCUS =
+  'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300'
+const BTN_PRIMARY = `inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-cyan-400 to-sky-500 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:from-cyan-300 hover:to-sky-400 ${FOCUS}`
+const BTN_SECONDARY = `inline-flex items-center gap-1.5 rounded-xl border border-[#243049] bg-[#0e1626] px-3.5 py-2 text-sm font-medium text-slate-200 transition hover:border-cyan-400/60 hover:text-white ${FOCUS}`
+const SECTION_HEADING = 'px-1 text-sm font-semibold tracking-wide text-slate-200 uppercase'
 
 const VERIFICATION_BADGE_MAP: Record<
   VerificationStatus,
@@ -33,7 +55,7 @@ const VERIFICATION_BADGE_MAP: Record<
 > = {
   belum_lengkap: {
     label: 'Belum Lengkap',
-    className: 'border-zinc-700 bg-zinc-900 text-zinc-300',
+    className: 'border-zinc-700 bg-zinc-900 text-slate-300',
   },
   menunggu: {
     label: 'Menunggu Verifikasi',
@@ -57,6 +79,35 @@ const FINALIZE_MISSING_LABELS: Record<FinalizeMissingItem, string> = {
   members_incomplete: 'Masih ada anggota yang belum melengkapi profil/dokumen',
 }
 
+interface StatusChipProps {
+  label: string
+  ready: boolean
+}
+
+/**
+ * Readiness chip. The state is carried by a glyph and a screen-reader word in
+ * addition to color, so it survives color blindness and increased contrast.
+ */
+function StatusChip({ label, ready }: StatusChipProps) {
+  return (
+    <div
+      className={`flex items-center justify-center gap-1.5 rounded-xl border px-2 py-1.5 text-center text-sm ${
+        ready
+          ? 'border-emerald-500/30 bg-emerald-950/30 text-emerald-200'
+          : 'border-[#1e293f] bg-[#0e1626] text-slate-400'
+      }`}
+    >
+      {ready ? (
+        <Check className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+      ) : (
+        <Minus className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+      )}
+      <span>{label}</span>
+      <span className="sr-only">{ready ? '— sudah ada' : '— belum ada'}</span>
+    </div>
+  )
+}
+
 interface CountdownCardProps {
   testId: string
   title: string
@@ -78,20 +129,20 @@ function DeadlineCountdownCard({
   return (
     <div
       data-testid={testId}
-      className="flex flex-col justify-between rounded-xl border border-[#222] bg-[#121212] p-5 shadow-[0_10px_40px_rgba(0,0,0,0.75)]"
+      className={`flex flex-col justify-between ${CARD} p-5`}
     >
       <div className="flex items-start justify-between gap-3">
         <div>
-          <div className="flex items-center gap-2 text-xs font-medium text-zinc-400">
-            <Clock className="h-3.5 w-3.5 text-zinc-300" aria-hidden="true" />
+          <div className="flex items-center gap-2 text-sm font-medium text-slate-400">
+            <Clock className="h-4 w-4 text-slate-300" aria-hidden="true" />
             <span>{subtitle}</span>
           </div>
-          <h2 className="mt-1 text-base font-semibold text-white">{title}</h2>
+          <h3 className="mt-1 text-base font-semibold text-white">{title}</h3>
         </div>
 
         {snapshot && (
           <span
-            className={`shrink-0 rounded-full border px-2.5 py-0.5 text-[11px] font-medium ${
+            className={`shrink-0 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${
               snapshot.expired
                 ? 'border-rose-500/40 bg-rose-950/50 text-rose-200'
                 : 'border-emerald-500/40 bg-emerald-950/50 text-emerald-200'
@@ -112,23 +163,23 @@ function DeadlineCountdownCard({
           ].map((segment) => (
             <div
               key={segment.unit}
-              className="rounded-lg border border-[#2a2a2a] bg-black px-2 py-2.5"
+              className="rounded-xl border border-[#1e293f] bg-[#0e1626] px-1.5 py-2.5"
             >
-              <div className="font-mono text-lg font-semibold text-white tabular-nums sm:text-xl">
+              <div className="font-mono text-2xl font-semibold text-white tabular-nums sm:text-3xl">
                 {String(segment.value).padStart(2, '0')}
               </div>
-              <div className="mt-0.5 text-[10px] tracking-wider text-zinc-500 uppercase">
+              <div className="mt-1 text-xs tracking-wider text-slate-400 uppercase">
                 {segment.unit}
               </div>
             </div>
           ))}
         </div>
       ) : (
-        <p className="mt-4 text-xs text-zinc-500">{deadlineIso ? 'Format waktu tenggat tidak valid.' : 'Tenggat belum ditetapkan.'}</p>
+        <p className="mt-4 text-sm text-slate-400">Format waktu tenggat tidak valid.</p>
       )}
 
-      <p className="mt-3 text-xs text-zinc-400">
-        Batas akhir: <span className="text-zinc-200">{formattedDate}</span>
+      <p className="mt-3 text-sm text-slate-400">
+        Batas akhir: <span className="text-slate-200">{formattedDate}</span>
       </p>
     </div>
   )
@@ -164,6 +215,14 @@ export function ParticipantDashboardPage() {
     documentsQuery.isLoading ||
     teamQuery.isLoading
 
+  // A refetch of already-cached data leaves `isLoading` false, so the refresh
+  // button needs `isFetching` to acknowledge the click at all.
+  const isRefreshing =
+    settingsQuery.isFetching ||
+    profileQuery.isFetching ||
+    documentsQuery.isFetching ||
+    teamQuery.isFetching
+
   const hasQueryError =
     settingsQuery.isError ||
     profileQuery.isError ||
@@ -198,110 +257,129 @@ export function ParticipantDashboardPage() {
     ? team.members.filter((m) => m.profile_complete && m.documents_complete).length
     : 0
 
-  const quickNavItems = [
-    {
-      to: '/profile',
-      title: 'Profil Pribadi',
-      description: 'Kelola 7 field identitas mahasiswa yang dienkripsi tiga cipher.',
-      icon: UserCheck,
-      meta: profile?.profile_complete ? 'Lengkap' : 'Perlu dilengkapi',
-    },
-    {
-      to: '/documents',
-      title: 'Document Manager',
-      description: 'Unggah, ganti, pratinjau, dan unduh scan KTP, KTM/KRSM, & Twibbon.',
-      icon: FileText,
-      meta: `${uploadedDocsCount}/3 dokumen`,
-    },
-    {
-      to: '/team',
-      title: 'Team Workspace',
-      description: 'Buat atau gabung tim, unggah proposal PDF, simpan link GitHub, & submit final.',
-      icon: Users,
-      meta: team ? `${team.name} (${team.status})` : 'Belum bertim',
-    },
-    {
-      to: '/video',
-      title: 'Video Demo Upload',
-      description: 'Unggah streaming MP4 hingga 100 MB, pratinjau blob utuh, dan unduh.',
-      icon: Video,
-      meta: team?.submission.video ? 'Terunggah' : 'Belum diunggah',
-    },
-    {
-      to: '/encryption-inspector',
-      title: 'Encryption Inspector',
-      description: 'Periksa status proteksi 3-cipher (AES-CTR, DES-CTR, RC4 + HMAC) & SHA-256.',
-      icon: ShieldCheck,
-      meta: 'Verifikasi integritas',
-    },
-  ]
+  /**
+   * The hero shows whichever competition deadline is next, falling back to the
+   * submission deadline once registration has closed.
+   */
+  const registrationSnapshot = settings
+    ? computeCountdown(settings.registration_deadline, nowMs)
+    : null
+  const submissionSnapshot = settings
+    ? computeCountdown(settings.submission_deadline, nowMs)
+    : null
+  const heroCountdown =
+    registrationSnapshot && !registrationSnapshot.expired
+      ? { label: 'Tenggat Pendaftaran Peserta', snapshot: registrationSnapshot }
+      : submissionSnapshot
+        ? { label: 'Tenggat Pengumpulan Karya', snapshot: submissionSnapshot }
+        : registrationSnapshot
+          ? { label: 'Tenggat Pendaftaran Peserta', snapshot: registrationSnapshot }
+          : null
 
   return (
     <div className="space-y-6">
-      {/* Top Header */}
-      <header className="flex flex-wrap items-start justify-between gap-4 rounded-xl border border-[#222] bg-[#121212] p-6 shadow-[0_10px_40px_rgba(0,0,0,0.8)]">
-        <div>
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-[#333] bg-black px-3 py-1 text-xs font-medium text-zinc-300">
-            <ShieldCheck className="h-3.5 w-3.5 text-zinc-100" aria-hidden="true" />
-            Schematics NIC · Ruang Peserta
-          </span>
-          <h1 className="mt-2.5 text-2xl font-bold tracking-tight text-white">
-            Participant Dashboard
-          </h1>
-          <p className="mt-1 text-sm text-zinc-400">
-            Selamat datang,{' '}
-            <span className="font-medium text-zinc-200">
-              {profile?.full_name || user?.full_name || user?.email || 'Peserta'}
+      {/* Hero banner (reference: gradient panel + live countdown) */}
+      <section
+        data-testid="dashboard-hero"
+        className="relative overflow-hidden rounded-2xl border border-cyan-400/25 bg-gradient-to-br from-[#0e3b4d] via-[#123050] to-[#16233f] p-6 shadow-[0_18px_50px_rgba(0,0,0,0.45)] sm:p-8"
+      >
+        <div className="flex flex-wrap items-start justify-between gap-6">
+          <div className="min-w-0 max-w-xl">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-cyan-300/30 bg-cyan-400/10 px-3 py-1 text-xs font-semibold text-cyan-100">
+              <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
+              Schematics NIC · Ruang Peserta
             </span>
-            . Pantau tenggat waktu, status verifikasi identitas, dan kesiapan karya tim Anda.
-          </p>
-        </div>
+            <h1 className="mt-3 text-3xl font-bold tracking-tight text-white">
+              Participant Dashboard
+            </h1>
+            <p className="mt-2 text-sm leading-relaxed text-slate-200">
+              Selamat datang,{' '}
+              <span className="font-semibold text-white">
+                {profile?.full_name || user?.full_name || user?.email || 'Peserta'}
+              </span>
+              . Seluruh pendaftaran, dokumen, tim, dan karya Anda dikelola di halaman ini.
+            </p>
 
-        <button
-          type="button"
-          onClick={handleRetryAll}
-          disabled={isInitialLoading}
-          className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-[#333] bg-black px-3 py-2 text-xs font-medium text-zinc-200 transition hover:border-zinc-500 hover:text-white disabled:opacity-50"
-        >
-          <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
-          Segarkan Status
-        </button>
-      </header>
+            <button
+              type="button"
+              onClick={handleRetryAll}
+              disabled={isInitialLoading}
+              aria-busy={isRefreshing}
+              className={`mt-4 ${BTN_SECONDARY}`}
+            >
+              <RefreshCw
+                className={`h-4 w-4 ${isRefreshing ? 'motion-safe:animate-spin' : ''}`}
+                aria-hidden="true"
+              />
+              Segarkan Status
+            </button>
+          </div>
+
+          {heroCountdown ? (
+            <div data-testid="hero-countdown" className="shrink-0">
+              <p className="flex items-center gap-1.5 text-sm font-medium text-cyan-100">
+                <Clock className="h-4 w-4" aria-hidden="true" />
+                {heroCountdown.label}
+              </p>
+              <div className="mt-2.5 flex items-center gap-2.5">
+                {[
+                  { value: heroCountdown.snapshot.days, unit: 'Hari' },
+                  { value: heroCountdown.snapshot.hours, unit: 'Jam' },
+                  { value: heroCountdown.snapshot.minutes, unit: 'Menit' },
+                  { value: heroCountdown.snapshot.seconds, unit: 'Detik' },
+                ].map((segment) => (
+                  <div
+                    key={segment.unit}
+                    className="flex h-20 w-20 flex-col items-center justify-center rounded-full border border-cyan-300/40 bg-[#0b1a2b]/80 shadow-[0_0_24px_rgba(34,211,238,0.18)]"
+                  >
+                    <span className="text-xs tracking-wide text-cyan-200 uppercase">
+                      {segment.unit}
+                    </span>
+                    <span className="font-mono text-2xl font-bold tabular-nums text-white">
+                      {String(segment.value).padStart(2, '0')}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <p className="mt-2 text-center text-sm font-medium text-slate-200">
+                {heroCountdown.snapshot.expired ? 'Tenggat telah terlewat' : 'Menuju tenggat'}
+              </p>
+            </div>
+          ) : null}
+        </div>
+      </section>
 
       {/* Rejection Reason Alert (ditolak) */}
       {verificationStatus === 'ditolak' && (
         <section
           role="alert"
           data-testid="rejection-alert"
-          className="rounded-xl border border-rose-500/40 bg-rose-950/35 p-5 text-rose-100 shadow-[0_10px_30px_rgba(0,0,0,0.6)]"
+          className="rounded-2xl border border-rose-500/40 bg-rose-950/35 p-5 text-rose-100 shadow-[0_10px_30px_rgba(0,0,0,0.6)]"
         >
           <div className="flex items-start gap-3">
             <XCircle className="mt-0.5 h-5 w-5 shrink-0 text-rose-400" aria-hidden="true" />
             <div className="flex-1">
-              <h2 className="text-sm font-semibold text-white">
+              <h2 className="text-base font-semibold text-white">
                 Verifikasi Peserta Ditolak — Perlu Perbaikan
               </h2>
-              <p className="mt-1 text-sm text-rose-200">
+              <p className="mt-1.5 text-sm text-rose-200">
                 {rejectionNote
                   ? `Catatan Superadmin: "${rejectionNote}"`
                   : 'Panitia menolak dokumen atau data diri Anda. Silakan periksa kembali profil dan unggah ulang dokumen identitas yang jelas.'}
               </p>
-              <p className="mt-1.5 text-xs text-rose-300/90">
+              <p className="mt-1.5 text-sm text-rose-200/90">
                 Selama tenggat pendaftaran belum terlewat, mengunggah ulang dokumen atau
                 memperbaiki profil akan mengembalikan status Anda ke{' '}
                 <strong className="font-semibold text-white">Menunggu Verifikasi</strong>.
               </p>
-              <div className="mt-3.5 flex flex-wrap gap-2.5">
-                <Link
-                  to="/documents"
-                  className="inline-flex items-center gap-1.5 rounded-md bg-[#ededed] px-3.5 py-2 text-xs font-semibold text-black transition hover:bg-white"
-                >
+              <div className="mt-4 flex flex-wrap gap-2.5">
+                <a href="#documents-section" className={BTN_PRIMARY}>
                   Unggah Ulang Dokumen
-                  <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
-                </Link>
+                  <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                </a>
                 <Link
                   to="/profile"
-                  className="inline-flex items-center gap-1.5 rounded-md border border-rose-400/40 bg-black/60 px-3.5 py-2 text-xs font-semibold text-white transition hover:border-rose-300"
+                  className={`inline-flex items-center gap-1.5 rounded-xl border border-rose-400/40 bg-[#0e1626]/60 px-3.5 py-2 text-sm font-semibold text-white transition hover:border-rose-300 ${FOCUS}`}
                 >
                   Periksa Data Diri
                 </Link>
@@ -316,7 +394,7 @@ export function ParticipantDashboardPage() {
         <section
           role="alert"
           data-testid="dashboard-error-alert"
-          className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-500/40 bg-amber-950/40 px-5 py-4 text-sm text-amber-200"
+          className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-500/40 bg-amber-950/40 px-5 py-4 text-sm text-amber-200"
         >
           <div className="flex items-center gap-2.5">
             <AlertCircle className="h-4 w-4 shrink-0 text-amber-400" aria-hidden="true" />
@@ -325,9 +403,12 @@ export function ParticipantDashboardPage() {
           <button
             type="button"
             onClick={handleRetryAll}
-            className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-amber-400/40 bg-black px-3 py-1.5 text-xs font-semibold text-amber-100 hover:bg-amber-950"
+            className={`inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-amber-400/40 bg-[#0e1626] px-3.5 py-2 text-sm font-semibold text-amber-100 transition hover:bg-amber-950 ${FOCUS}`}
           >
-            <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
+            <RefreshCw
+              className={`h-4 w-4 ${isRefreshing ? 'motion-safe:animate-spin' : ''}`}
+              aria-hidden="true"
+            />
             Coba Muat Ulang
           </button>
         </section>
@@ -338,61 +419,47 @@ export function ParticipantDashboardPage() {
         <div
           role="status"
           data-testid="dashboard-loading"
-          className="rounded-xl border border-[#222] bg-[#121212] p-6 text-center text-sm text-zinc-400"
+          className={`flex items-center justify-center gap-2.5 ${CARD} p-6 text-sm text-slate-300`}
         >
+          <RefreshCw
+            className="h-4 w-4 shrink-0 text-slate-400 motion-safe:animate-spin"
+            aria-hidden="true"
+          />
           Memuat ringkasan pendaftaran, tenggat waktu, dan status tim...
         </div>
       )}
 
-      {/* Live Deadline Countdowns (GET /api/settings) */}
-      {settings && (
-        <section aria-label="Tenggat Waktu Kompetisi" className="grid gap-4 md:grid-cols-2">
-          <DeadlineCountdownCard
-            testId="registration-countdown-card"
-            subtitle="Pendaftaran & Dokumen"
-            title="Tenggat Pendaftaran Peserta"
-            deadlineIso={settings.registration_deadline}
-            nowMs={nowMs}
-          />
-          <DeadlineCountdownCard
-            testId="submission-countdown-card"
-            subtitle="Proposal, Video & Finalisasi"
-            title="Tenggat Pengumpulan Karya"
-            deadlineIso={settings.submission_deadline}
-            nowMs={nowMs}
-          />
-        </section>
-      )}
-
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="min-w-0 space-y-6">
       {/* Dual Status Cards (Verification + Team) */}
-      <section aria-label="Status Pendaftaran dan Tim" className="space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-2 px-1">
-          <h2 className="text-sm font-semibold tracking-wide text-zinc-200 uppercase">
+      <section aria-labelledby="readiness-heading" className="space-y-3">
+        <div className="px-1">
+          <h2 id="readiness-heading" className="text-sm font-semibold tracking-wide text-slate-200 uppercase">
             Status Verifikasi &amp; Kesiapan Tim
           </h2>
-          <p className="text-xs text-zinc-500">
-            Verifikasi peserta dan status tim berjalan independen (tim boleh submit final sebelum
-            verifikasi superadmin selesai).
+          <p className="mt-1 max-w-prose text-sm text-slate-400">
+            Verifikasi peserta dan status tim berjalan independen — tim boleh submit final
+            sebelum verifikasi superadmin selesai.
           </p>
         </div>
 
-        <div className="grid gap-5 lg:grid-cols-2">
+        <div className="grid gap-4">
           {/* Card 1: Participant Verification Status */}
           <article
             data-testid="verification-status-card"
-            className="flex flex-col justify-between rounded-xl border border-[#222] bg-[#121212] p-6 shadow-[0_10px_40px_rgba(0,0,0,0.8)]"
+            className={`flex flex-col justify-between ${CARD} p-6`}
           >
             <div>
-              <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#222] pb-4">
+              <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#243049] pb-4">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full border border-[#333] bg-[#111] text-white">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#243049] bg-[#0e1626] text-white">
                     <FileCheck2 className="h-5 w-5" aria-hidden="true" />
                   </div>
                   <div>
                     <h3 className="text-base font-semibold text-white">
                       Status Verifikasi Peserta
                     </h3>
-                    <p className="text-xs text-zinc-400">
+                    <p className="text-sm text-slate-400">
                       Kelengkapan data diri &amp; 3 dokumen identitas
                     </p>
                   </div>
@@ -407,59 +474,59 @@ export function ParticipantDashboardPage() {
               </div>
 
               <ul className="mt-4 space-y-3 text-sm">
-                <li className="flex items-center justify-between rounded-lg border border-[#222] bg-black px-3.5 py-2.5">
-                  <span className="text-zinc-300">Persetujuan Privasi UU PDP</span>
-                  <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-300">
-                    <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
-                    Versi {user?.consent?.policy_version ?? user?.current_policy_version ?? '1.0'}
+                <li className={`flex items-center justify-between gap-3 ${WELL} px-3.5 py-2.5`}>
+                  <span className="text-slate-300">Persetujuan Privasi UU PDP</span>
+                  <span className="inline-flex shrink-0 items-center gap-1.5 font-medium text-emerald-300">
+                    <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
+                    <span className="font-mono tabular-nums">
+                      v
+                      {user?.consent?.policy_version ??
+                        user?.current_policy_version ??
+                        '1.0'}
+                    </span>
                   </span>
                 </li>
 
-                <li className="flex items-center justify-between rounded-lg border border-[#222] bg-black px-3.5 py-2.5">
-                  <div>
-                    <p className="text-zinc-300">Data Diri Peserta (7 Field)</p>
+                <li className={`flex items-center justify-between gap-3 ${WELL} px-3.5 py-2.5`}>
+                  <div className="min-w-0">
+                    <p className="text-slate-300">Data Diri Peserta (7 Field)</p>
                     {profile?.institution && (
-                      <p className="text-xs text-zinc-500">
+                      <p className="mt-0.5 text-slate-400">
                         {profile.full_name} · {profile.institution}
                       </p>
                     )}
                   </div>
                   {profile?.profile_complete ? (
-                    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-300">
-                      <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
+                    <span className="inline-flex shrink-0 items-center gap-1.5 font-medium text-emerald-300">
+                      <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
                       Lengkap
                     </span>
                   ) : (
-                    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-amber-300">
-                      <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" />
+                    <span className="inline-flex shrink-0 items-center gap-1.5 font-medium text-amber-300">
+                      <AlertTriangle className="h-4 w-4" aria-hidden="true" />
                       Belum Lengkap
                     </span>
                   )}
                 </li>
 
-                <li className="rounded-lg border border-[#222] bg-black px-3.5 py-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-zinc-300">Dokumen Identitas Wajib</span>
-                    <span className="text-xs font-medium text-zinc-300">
+                <li className={`${WELL} px-3.5 py-3`}>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-slate-300">Dokumen Identitas Wajib</span>
+                    <span className="shrink-0 font-medium text-slate-300 tabular-nums">
                       {uploadedDocsCount}/3 terunggah
                     </span>
                   </div>
-                  <div className="mt-2.5 grid grid-cols-3 gap-2">
+                  <div className="mt-2.5 grid grid-cols-1 gap-2 sm:grid-cols-3">
                     {[
                       { key: 'ktp', label: 'Scan KTP', item: documents?.ktp },
                       { key: 'ktm', label: 'KTM / KRSM', item: documents?.ktm },
                       { key: 'twibbon', label: 'Twibbon', item: documents?.twibbon },
                     ].map((doc) => (
-                      <div
+                      <StatusChip
                         key={doc.key}
-                        className={`rounded-md border px-2.5 py-1.5 text-center text-xs ${
-                          doc.item
-                            ? 'border-emerald-500/30 bg-emerald-950/30 text-emerald-200'
-                            : 'border-[#2a2a2a] bg-[#121212] text-zinc-500'
-                        }`}
-                      >
-                        {doc.label}
-                      </div>
+                        label={doc.label}
+                        ready={Boolean(doc.item)}
+                      />
                     ))}
                   </div>
                 </li>
@@ -468,27 +535,18 @@ export function ParticipantDashboardPage() {
 
             <div className="mt-5 flex flex-wrap gap-2.5 pt-2">
               {!profile?.profile_complete ? (
-                <Link
-                  to="/profile"
-                  className="inline-flex items-center gap-1.5 rounded-md bg-[#ededed] px-4 py-2 text-xs font-semibold text-black transition hover:bg-white"
-                >
+                <Link to="/profile" className={BTN_PRIMARY}>
                   Lengkapi Profil
-                  <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+                  <ArrowRight className="h-4 w-4" aria-hidden="true" />
                 </Link>
               ) : (
-                <Link
-                  to="/documents"
-                  className="inline-flex items-center gap-1.5 rounded-md bg-[#ededed] px-4 py-2 text-xs font-semibold text-black transition hover:bg-white"
-                >
+                <a href="#documents-section" className={BTN_PRIMARY}>
                   {documents?.documents_complete ? 'Kelola Dokumen' : 'Unggah Dokumen'}
-                  <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
-                </Link>
+                  <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                </a>
               )}
 
-              <Link
-                to="/profile"
-                className="inline-flex items-center gap-1.5 rounded-md border border-[#333] bg-black px-3.5 py-2 text-xs font-medium text-zinc-200 transition hover:border-zinc-500 hover:text-white"
-              >
+              <Link to="/profile" className={BTN_SECONDARY}>
                 Buka Profil
               </Link>
             </div>
@@ -497,19 +555,19 @@ export function ParticipantDashboardPage() {
           {/* Card 2: Team & Submission Status */}
           <article
             data-testid="team-status-card"
-            className="flex flex-col justify-between rounded-xl border border-[#222] bg-[#121212] p-6 shadow-[0_10px_40px_rgba(0,0,0,0.8)]"
+            className={`flex flex-col justify-between ${CARD} p-6`}
           >
             <div>
-              <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#222] pb-4">
+              <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#243049] pb-4">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full border border-[#333] bg-[#111] text-white">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#243049] bg-[#0e1626] text-white">
                     <Users className="h-5 w-5" aria-hidden="true" />
                   </div>
                   <div>
                     <h3 className="text-base font-semibold text-white">
                       Status Tim &amp; Submission
                     </h3>
-                    <p className="text-xs text-zinc-400">
+                    <p className="text-sm text-slate-400">
                       Formasi tim ({settings?.min_team_size ?? 2}–{settings?.max_team_size ?? 4}{' '}
                       anggota) &amp; pengumpulan karya
                     </p>
@@ -519,7 +577,7 @@ export function ParticipantDashboardPage() {
                 {!team ? (
                   <span
                     data-testid="team-status-badge"
-                    className="rounded-full border border-zinc-700 bg-zinc-900 px-3 py-1 text-xs font-semibold text-zinc-300"
+                    className="rounded-full border border-zinc-700 bg-zinc-900 px-3 py-1 text-xs font-semibold text-slate-300"
                   >
                     Belum Bertim
                   </span>
@@ -541,38 +599,40 @@ export function ParticipantDashboardPage() {
               </div>
 
               {!team ? (
-                <div className="mt-4 rounded-lg border border-[#222] bg-black p-4 text-sm text-zinc-300">
+                <div className={`mt-4 ${WELL} p-4 text-sm text-slate-300`}>
                   <p className="font-medium text-white">Anda belum tergabung dalam tim mana pun.</p>
-                  <p className="mt-1 text-xs leading-relaxed text-zinc-400">
+                  <p className="mt-1 leading-relaxed text-slate-400">
                     Buat tim baru untuk menjadi Ketua Tim dan memperoleh kode undangan 8 karakter,
                     atau gabung ke tim rekan Anda menggunakan kode tim yang sudah ada.
                   </p>
                 </div>
               ) : (
                 <div className="mt-4 space-y-3 text-sm">
-                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[#222] bg-black px-3.5 py-2.5">
+                  <div
+                    className={`flex flex-wrap items-center justify-between gap-2 ${WELL} px-3.5 py-2.5`}
+                  >
                     <div>
                       <p className="font-semibold text-white">{team.name}</p>
-                      <p className="text-xs text-zinc-400">
+                      <p className="mt-0.5 text-slate-400">
                         Peran: {isTeamLeader ? 'Ketua Tim' : 'Anggota'} · Kode:{' '}
-                        <code className="rounded bg-[#18181b] px-1.5 py-0.5 font-mono text-zinc-200">
+                        <code className="rounded bg-[#18181b] px-1.5 py-0.5 font-mono tracking-wider text-slate-200">
                           {team.code}
                         </code>
                       </p>
                     </div>
-                    <span className="text-xs font-medium text-zinc-300">
+                    <span className="font-medium text-slate-300 tabular-nums">
                       {readyMembersCount}/{team.members.length} anggota lengkap
                     </span>
                   </div>
 
-                  <div className="rounded-lg border border-[#222] bg-black px-3.5 py-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-zinc-300">Komponen Karya Hackathon</span>
-                      <span className="text-xs text-zinc-400">
+                  <div className={`${WELL} px-3.5 py-3`}>
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-slate-300">Komponen Karya Hackathon</span>
+                      <span className="shrink-0 text-slate-400">
                         {team.status === 'final' ? 'Terkunci untuk penjurian' : 'Dapat diperbarui'}
                       </span>
                     </div>
-                    <div className="mt-2.5 grid grid-cols-3 gap-2">
+                    <div className="mt-2.5 grid grid-cols-1 gap-2 sm:grid-cols-3">
                       {[
                         {
                           key: 'proposal',
@@ -590,16 +650,11 @@ export function ParticipantDashboardPage() {
                           ready: Boolean(team.submission.repo_url),
                         },
                       ].map((artifact) => (
-                        <div
+                        <StatusChip
                           key={artifact.key}
-                          className={`rounded-md border px-2.5 py-1.5 text-center text-xs ${
-                            artifact.ready
-                              ? 'border-emerald-500/30 bg-emerald-950/30 text-emerald-200'
-                              : 'border-[#2a2a2a] bg-[#121212] text-zinc-500'
-                          }`}
-                        >
-                          {artifact.label}
-                        </div>
+                          label={artifact.label}
+                          ready={artifact.ready}
+                        />
                       ))}
                     </div>
                   </div>
@@ -607,12 +662,18 @@ export function ParticipantDashboardPage() {
                   {team.status === 'draft' && team.finalize_missing.length > 0 && (
                     <div
                       data-testid="finalize-missing-list"
-                      className="rounded-lg border border-[#222] bg-black/70 px-3.5 py-2.5 text-xs text-zinc-400"
+                      className="rounded-xl border border-[#243049] bg-[#0e1626]/70 px-3.5 py-3 text-slate-400"
                     >
-                      <p className="font-medium text-zinc-300">Syarat menuju Submit Final:</p>
-                      <ul className="mt-1 list-inside list-disc space-y-0.5">
+                      <p className="font-medium text-slate-300">Syarat menuju Submit Final:</p>
+                      <ul className="mt-1.5 space-y-1">
                         {team.finalize_missing.map((item) => (
-                          <li key={item}>{FINALIZE_MISSING_LABELS[item]}</li>
+                          <li key={item} className="flex items-start gap-2">
+                            <Minus
+                              className="mt-1 h-3.5 w-3.5 shrink-0 text-amber-300"
+                              aria-hidden="true"
+                            />
+                            <span>{FINALIZE_MISSING_LABELS[item]}</span>
+                          </li>
                         ))}
                       </ul>
                     </div>
@@ -622,69 +683,79 @@ export function ParticipantDashboardPage() {
             </div>
 
             <div className="mt-5 flex flex-wrap gap-2.5 pt-2">
-              <Link
-                to="/team"
-                className="inline-flex items-center gap-1.5 rounded-md bg-[#ededed] px-4 py-2 text-xs font-semibold text-black transition hover:bg-white"
-              >
-                {!team ? 'Buat atau Gabung Tim' : 'Buka Team Workspace'}
-                <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
-              </Link>
+              <a href="#team-section" className={BTN_PRIMARY}>
+                {!team ? 'Buat atau Gabung Tim' : 'Kelola Tim & Karya'}
+                <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </a>
 
               {team && (
-                <Link
-                  to="/video"
-                  className="inline-flex items-center gap-1.5 rounded-md border border-[#333] bg-black px-3.5 py-2 text-xs font-medium text-zinc-200 transition hover:border-zinc-500 hover:text-white"
-                >
+                <a href="#video-section" className={BTN_SECONDARY}>
                   Video Demo
-                </Link>
+                </a>
               )}
             </div>
           </article>
         </div>
       </section>
 
-      {/* Quick Navigation Grid */}
-      <section aria-label="Navigasi Cepat" className="space-y-3">
-        <h2 className="px-1 text-sm font-semibold tracking-wide text-zinc-200 uppercase">
-          Navigasi Cepat
-        </h2>
+          <div id="team-section" data-testid="team-section" className="scroll-mt-24">
+            <TeamSection />
+          </div>
 
-        <div
-          data-testid="quick-navigation-grid"
-          className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
-        >
-          {quickNavItems.map((nav) => {
-            const Icon = nav.icon
-            return (
-              <Link
-                key={nav.to}
-                to={nav.to}
-                className="group flex flex-col justify-between rounded-xl border border-[#222] bg-[#121212] p-5 transition hover:border-zinc-500"
-              >
-                <div>
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#333] bg-black text-zinc-100">
-                      <Icon className="h-4 w-4" aria-hidden="true" />
-                    </div>
-                    <span className="rounded-full border border-[#2a2a2a] bg-black px-2.5 py-0.5 text-[11px] text-zinc-400">
-                      {nav.meta}
-                    </span>
-                  </div>
-                  <h3 className="mt-3.5 text-sm font-semibold text-white group-hover:underline">
-                    {nav.title}
-                  </h3>
-                  <p className="mt-1 text-xs leading-relaxed text-zinc-400">{nav.description}</p>
-                </div>
+          <div id="documents-section" data-testid="documents-section" className="scroll-mt-24">
+            <DocumentsSection />
+          </div>
 
-                <div className="mt-4 inline-flex items-center gap-1 text-xs font-medium text-zinc-300 group-hover:text-white">
-                  <span>Buka halaman</span>
-                  <ArrowRight className="h-3.5 w-3.5 transition group-hover:translate-x-0.5" />
-                </div>
-              </Link>
-            )
-          })}
+          <div id="video-section" data-testid="video-section" className="scroll-mt-24">
+            <VideoSection />
+          </div>
         </div>
-      </section>
+
+        <aside className="space-y-6">
+          <section aria-labelledby="timeline-heading" className="space-y-3">
+            <h2 id="timeline-heading" className={SECTION_HEADING}>
+              Timeline
+            </h2>
+      {/* Live Deadline Countdowns (GET /api/settings) */}
+      {settings && (
+        <section aria-label="Tenggat waktu kompetisi" className="space-y-3">
+          <div className="grid gap-4">
+            <DeadlineCountdownCard
+              testId="registration-countdown-card"
+              subtitle="Pendaftaran & Dokumen"
+              title="Tenggat Pendaftaran Peserta"
+              deadlineIso={settings.registration_deadline}
+              nowMs={nowMs}
+            />
+            <DeadlineCountdownCard
+              testId="submission-countdown-card"
+              subtitle="Proposal, Video & Finalisasi"
+              title="Tenggat Pengumpulan Karya"
+              deadlineIso={settings.submission_deadline}
+              nowMs={nowMs}
+            />
+          </div>
+        </section>
+      )}
+
+          </section>
+
+          <section
+            data-testid="announcement-card"
+            aria-labelledby="announcement-heading"
+            className={`${CARD} p-6 text-center`}
+          >
+            <h2 id="announcement-heading" className="text-lg font-bold text-cyan-200">
+              Pengumuman
+            </h2>
+            <p className="mt-2 text-sm text-slate-300">
+              {settings
+                ? 'Belum ada pengumuman baru dari panitia.'
+                : 'Pengumuman panitia akan tampil di sini.'}
+            </p>
+          </section>
+        </aside>
+      </div>
     </div>
   )
 }

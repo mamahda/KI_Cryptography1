@@ -36,8 +36,8 @@ class CipherSuite:
     name: str
     enc_key_len: int
     mac_key_len: int
-    encrypt: Callable[[bytes, bytes, bytes, bytes], EncryptedPayload]
-    decrypt: Callable[[EncryptedPayload, bytes, bytes, bytes], bytes]
+    encrypt: Callable[..., EncryptedPayload]
+    decrypt: Callable[..., bytes]
 
     @property
     def authenticated(self) -> bool:

@@ -17,6 +17,7 @@ from Crypto.Cipher import AES
 
 from .base import CipherSuite, EncryptedPayload
 from .errors import IntegrityError
+from .timing import Timings, measure
 
 WRAP_NONCE_LEN = 12
 WRAP_TAG_LEN = 16
@@ -55,7 +56,9 @@ def unwrap_keys(
     try:
         return gcm.decrypt_and_verify(wrapped, tag)
     except ValueError as exc:
-        raise IntegrityError("Kunci data gagal dibuka: tag pembungkus tidak cocok") from exc
+        raise IntegrityError(
+            "Kunci data gagal dibuka: tag pembungkus tidak cocok"
+        ) from exc
 
 
 def _split(keys: bytes, suite: CipherSuite) -> tuple[bytes, bytes]:
@@ -63,13 +66,20 @@ def _split(keys: bytes, suite: CipherSuite) -> tuple[bytes, bytes]:
 
 
 def seal(
-    suite: CipherSuite, plaintext: bytes, *, kek: bytes, key_version: int, context: str
+    suite: CipherSuite,
+    plaintext: bytes,
+    *,
+    kek: bytes,
+    key_version: int,
+    context: str,
+    timings: Timings | None = None,
 ) -> SealedCiphertext:
     aad = build_aad(context, suite.name, key_version)
     keys = secrets.token_bytes(suite.enc_key_len + suite.mac_key_len)
     enc_key, mac_key = _split(keys, suite)
-    payload = suite.encrypt(plaintext, enc_key, mac_key, aad)
-    wrap_nonce, wrapped, wrap_tag = wrap_keys(kek, keys, aad)
+    payload = suite.encrypt(plaintext, enc_key, mac_key, aad, timings=timings)
+    with measure("wrap", timings):
+        wrap_nonce, wrapped, wrap_tag = wrap_keys(kek, keys, aad)
     return SealedCiphertext(
         cipher=suite.name,
         nonce=payload.nonce,
@@ -83,10 +93,17 @@ def seal(
 
 
 def open_sealed(
-    suite: CipherSuite, sealed: SealedCiphertext, *, kek: bytes, context: str
+    suite: CipherSuite,
+    sealed: SealedCiphertext,
+    *,
+    kek: bytes,
+    context: str,
+    timings: Timings | None = None,
 ) -> bytes:
     aad = build_aad(context, suite.name, sealed.key_version)
-    keys = unwrap_keys(kek, sealed.wrap_nonce, sealed.wrapped_keys, sealed.wrap_tag, aad)
+    keys = unwrap_keys(
+        kek, sealed.wrap_nonce, sealed.wrapped_keys, sealed.wrap_tag, aad
+    )
     enc_key, mac_key = _split(keys, suite)
     payload = EncryptedPayload(sealed.nonce, sealed.ciphertext, sealed.hmac_tag)
-    return suite.decrypt(payload, enc_key, mac_key, aad)
+    return suite.decrypt(payload, enc_key, mac_key, aad, timings=timings)

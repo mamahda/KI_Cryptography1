@@ -1,117 +1,94 @@
 # API Backend — Schematics NIC
 
-Semua endpoint berprefix `/api` (lihat `app/main.py`). Base URL contoh: `http://127.0.0.1:8000`.
+Path dan method mengikuti PRD PDF halaman 37–39. Semua route memakai prefix `/api`; health check tersedia di `GET /health`. Dokumentasi interaktif: `/docs`.
 
-## Konvensi umum
+## Konvensi
 
-- **Sesi**: JWT di cookie HttpOnly `access_token` (set oleh `/auth/login`, berlaku 8 jam). Endpoint yang butuh login mensyaratkan cookie ini (dependency `get_current_user`).
-- **CSRF**: setiap request yang mengubah data (POST/PUT/DELETE) wajib kirim header `X-CSRF-Token` berisi nilai cookie `csrf_token` (dependency `require_csrf`, double-submit). Cookie ini **bukan** HttpOnly, sengaja bisa dibaca JavaScript frontend.
-- **Role**: `peserta`, `juri`, `superadmin`. Endpoint ber-role memakai dependency `require_roles(...)` → 403 jika role tidak cocok.
-- **404 vs 403 untuk item**: endpoint yang membuka item/file (`GET /items/{item_id}`) selalu membalas 404 baik untuk item yang tidak ada maupun yang tidak boleh dibuka — supaya ID tidak bisa dipakai menebak keberadaan data (lihat README § Peran dan hak akses).
-- **Error body**: `{"detail": "pesan"}` (bawaan FastAPI/`HTTPException`).
-- **Upload file**: dikirim sebagai **raw request body** (bukan multipart), nama file asli dikirim lewat **query param `filename`** (ekstensinya dipakai untuk menentukan tipe file). Ekstensi tidak didukung → `415`; body kosong → `400`; melebihi batas ukuran → `413`.
-- **Penyimpanan plaintext**: semua field dan file disimpan apa adanya, tanpa enkripsi — teks di kolom `items.value`, file di folder `storage/` (path-nya di `items.path`). Skema yang aktif adalah `app/db/migrations_before_crypto/`. Enkripsi dan benchmark bukan bagian backend ini.
+- Sesi: JWT 8 jam di cookie HttpOnly `access_token`. Frontend mengirim `X-CSRF-Token` dari cookie `csrf_access_token` untuk perubahan data setelah login.
+- Error: `{"error": {"code": "...", "message": "...", "details": {...}}}`. Validasi 400, autentikasi 401, akses/CSRF/consent 403, tidak ditemukan 404, konflik 409, terlalu besar 413, tipe ditolak 415, rate limit 429.
+- Upload: body mentah `application/octet-stream`, nama file melalui `X-Filename: encodeURIComponent(filename)`. Respons JSON metadata, bukan 204.
+- `ItemMeta = {item_id, field, content_type, size_bytes, original_filename, uploaded_at}`.
+- Pagination: query `page` (mulai 1), `page_size` (1–100); respons `{items, page, page_size, total}`.
+- Penyimpanan menggunakan ciphertext melalui `crypto_services` dan migration `migrations/`. Upload masih memeriksa ekstensi dan ukuran; streaming enkripsi belum tersedia.
 
----
+## Akun dan privasi
 
-## Auth — `/api/auth`
-
-| Method | Path | Auth | Body | Response |
-| --- | --- | --- | --- | --- |
-| POST | `/register` | - | `{email, password}` | 201 `{id, role, verification_status}` |
-| POST | `/login` | - | `{email, password}` | 200 `{id, role, verification_status, must_change_password}` + set cookie sesi. Rate limit 10/menit/IP. Kalau `must_change_password` true (akun juri baru), frontend arahkan ke ganti password |
-| POST | `/change-password` | sesi + CSRF | `{current_password, new_password}` | 204. Dipakai juri yang akun dibuat superadmin (`must_change_password`) atau peserta ganti password sendiri |
-| POST | `/logout` | sesi + CSRF | - | 204 + hapus cookie sesi |
-| GET | `/me` | sesi | - | 200 `{id, role, verification_status, must_change_password}` |
-
-Error khas: `409` email sudah terdaftar (register), `401` email/password salah (login) atau password lama salah (change-password).
-
-## Privacy — `/api/privacy`
-
-| Method | Path | Auth | Body | Response |
-| --- | --- | --- | --- | --- |
-| GET | `/notice` | - | - | 200 `{policy_version, policy_text}` |
-| POST | `/consent` | sesi + CSRF | - | 204. Mencatat persetujuan peserta untuk `policy_version` aktif saat ini |
-
-Endpoint `PUT /profile/me` dan `PUT /documents/{doc_type}` **menolak** (403) peserta yang belum consent ke versi aktif (dependency `require_consent`).
-
-## Profile — `/api/profile`
-
-| Method | Path | Auth | Body | Response |
-| --- | --- | --- | --- | --- |
-| GET | `/me` | sesi | - | 200 `{email, full_name, nim, study_program, institution, birth_date, domicile, phone}` (null jika belum diisi) |
-| PUT | `/me` | sesi (peserta) + CSRF + consent | subset field di atas (semua opsional) | 204 |
-
-Mengubah `full_name`/`nim`/`institution` setelah status `terverifikasi` mengembalikan status peserta ke `menunggu`. `email` hanya dibaca di sini — perubahan email tidak ada di modul ini.
-
-## Documents — `/api/documents`
-
-| Method | Path | Auth | Query | Body | Response |
-| --- | --- | --- | --- | --- | --- |
-| PUT | `/{doc_type}` | sesi (peserta) + CSRF + consent | `filename` (wajib) | raw bytes, maks **5 MB**, ekstensi jpg/jpeg/png/pdf | 204 |
-
-`doc_type` ∈ `ktp`, `ktm`, `twibbon`. Upload baru menggantikan dokumen lama (file lama dihapus dari `storage/`). Begitu ketiga dokumen ada, `verification_status` peserta menjadi `menunggu` (termasuk saat mengganti dokumen setelah diverifikasi/ditolak). Ditolak (`409`) jika tenggat pendaftaran (`deadline_at`) sudah lewat.
-
-## Teams — `/api/teams`
-
-| Method | Path | Auth | Body | Response |
-| --- | --- | --- | --- | --- |
-| POST | `` | sesi (peserta) + CSRF | `{team_name}` | 201 `TeamOut`. Pembuat jadi ketua |
-| POST | `/join` | sesi (peserta) + CSRF | `{team_code}` | 200 `TeamOut`. Rate limit 10/menit/IP |
-| POST | `/leave` | sesi (peserta) + CSRF | - | 204 |
-| GET | `/me` | sesi | - | 200 `TeamOut` |
-| DELETE | `/members/{user_id}` | sesi (ketua) + CSRF | - | 204 |
-
-`TeamOut = {id, team_code, team_name, status, members: [{user_id, full_name, is_leader}]}`.
-
-Aturan: satu peserta hanya satu tim; kode tim 8 karakter acak (alfabet tanpa karakter ambigu); batas anggota dibaca dinamis dari setting `max_team_members` (default 4); tim `final` tidak bisa diubah; ketua tidak bisa keluar sendiri selagi ada anggota lain (keluarkan anggota dulu) — keluar sebagai ketua saat tim hanya berisi dirinya akan **menghapus tim**.
-
-## Items — Submission & File — `/api/items`
-
-| Method | Path | Auth | Query | Body | Response |
-| --- | --- | --- | --- | --- | --- |
-| PUT | `/proposal` | sesi (ketua) + CSRF | `filename` | raw bytes, maks **10 MB**, ekstensi pdf | 204 |
-| PUT | `/video` | sesi (ketua) + CSRF | `filename` | raw bytes, maks **100 MB**, ekstensi mp4 | 204 |
-| PUT | `/repo-url` | sesi (ketua) + CSRF | - | `{repo_url}` (harus `https://github.com/...`) | 204 |
-| POST | `/submit-final` | sesi (ketua) + CSRF | - | `{confirm: true}` | 204 |
-| GET | `/{item_id}` | sesi | - | - | 200 (isi file, atau teks untuk item seperti `repo_url`) atau 404 |
-
-Semua endpoint upload/`submit-final` ditolak `409` jika tim sudah `final` atau tenggat pengumpulan sudah lewat.
-
-`POST /submit-final` memverifikasi sebelum mengubah status tim ke `final`:
-- `confirm: true` wajib dikirim (konfirmasi dua langkah di sisi frontend).
-- Tim berisi 2 sampai `max_team_members` anggota.
-- **Semua** anggota sudah punya item aktif untuk: `full_name, nim, study_program, institution, birth_date, domicile, phone` (data diri) dan `ktp, ktm, twibbon` (dokumen).
-- Tim punya item aktif `proposal`, `video`, `repo_url`.
-
-`GET /{item_id}` — matriks akses (lihat juga README § Peran dan hak akses):
-
-| Pengakses | Field dokumen pribadi (ktp/ktm/twibbon) | Field tim (proposal/video/repo_url) |
+| Method | Path | Request / respons |
 | --- | --- | --- |
-| Pemilik sendiri | ✅ | — |
-| Anggota tim yang sama | ❌ (404) | ✅ |
-| Juri | ❌ (404) | ✅ **hanya** jika tim sudah `final`, tercatat di audit log |
-| Superadmin | ✅, tercatat di audit log | ✅, tercatat di audit log |
-| Lainnya | 404 | 404 |
+| POST | `/api/auth/register` | `{email, password}` → 201 `{user: Me}` dan sesi |
+| POST | `/api/auth/login` | `{email, password}` → `{user: Me}` |
+| POST | `/api/auth/logout` | 204, hapus cookie |
+| PUT | `/api/auth/password` | `{current_password, new_password}` → 204 |
+| GET | `/api/me` | `Me` |
+| GET | `/api/settings` | Publik; tenggat, batas anggota, batas file |
+| GET | `/api/policy` | Publik; `{version, text_markdown}` |
+| POST | `/api/consent` | Peserta; `{policy_version}` → 201 `{policy_version, agreed_at}` |
+| DELETE | `/api/consent` | Peserta; 204, nonaktifkan akun dan hapus item/file pribadi |
+| GET | `/api/me/items` | Peserta; `{items: metadata[]}` |
+| GET | `/api/me/access-log` | Peserta; riwayat akses data sendiri, pagination |
+| GET | `/api/me/export` | Peserta; ZIP profil dan dokumen pribadi |
 
-## Judges — `/api/judges`
+`Me` memuat `id, email, role, full_name, verification_status, verification_note, must_change_password, consent, current_policy_version, team`. Tim adalah ringkasan atau null; status verifikasi akun selain peserta adalah null.
 
-| Method | Path | Auth | Response |
-| --- | --- | --- | --- |
-| GET | `/teams` | sesi (role `juri`) | 200 `[{id, team_code, team_name}]` — semua tim `final`. Tercatat di audit log |
-| GET | `/teams/{team_id}` | sesi (role `juri`) | 200 `{id, team_name, members: [{full_name, institution}], proposal_item_id, video_item_id, repo_url}`. 404 jika tim belum final. Tercatat di audit log |
+Penarikan persetujuan memakai penghapusan sederhana untuk tugas. Anggota keluar dari tim draft; ketua digantikan anggota tersisa atau tim draft kosong dihapus. Tim final dan karya bersama tetap ada. Salinan backup tidak ikut dihapus.
 
-`proposal_item_id`/`video_item_id` dipakai juri untuk `GET /items/{item_id}` (stream file-nya).
+## Profil dan dokumen
 
-## Admin — `/api/admin` (role `superadmin`)
+| Method | Path | Request / respons |
+| --- | --- | --- |
+| GET | `/api/profile` | Peserta; profil, umur, kelengkapan, status dan catatan verifikasi |
+| PUT | `/api/profile` | Peserta + consent; field profil → profil terbaru |
+| GET | `/api/documents` | Peserta; `{ktp, ktm, twibbon, documents_complete}` |
+| POST | `/api/documents/{type}` | Peserta + consent; raw file → 201 ItemMeta + verification_status |
 
-| Method | Path | Body | Response |
-| --- | --- | --- | --- |
-| GET | `/participants` | - | 200 `[{id, email, verification_status, is_minor, team_id}]` |
-| POST | `/participants/{user_id}/verify` | `{approve, reason}` (reason wajib) | 204. Set `verification_status` → `terverifikasi`/`ditolak`, catat ke `verification_events` + audit log. 409 kalau peserta masih `belum_lengkap` |
-| POST | `/judges` | `{email, temporary_password}` | 201 `{id, email}`. Buat akun role `juri`, `must_change_password=1` |
-| GET | `/settings` | - | 200 `{deadline_at, max_team_members, privacy_policy_version, privacy_policy_text}` |
-| PUT | `/settings` | subset field di atas | 204. `deadline_at` harus tanggal-waktu ISO 8601 (tanpa zona waktu = jam server), `max_team_members` ≥ 2; selain itu 422. Dicatat audit log |
-| GET | `/audit-logs` | query `limit` (≤500, default 100), `offset` | 200 `[{id, actor_id, action, item_id, subject_user_id, result, created_at}]`, terbaru dulu |
+Field profil: `full_name, nim, study_program, institution, birth_date, domicile, phone`. Identitas yang diubah setelah terverifikasi memicu verifikasi ulang. Dokumen: `ktp, ktm, twibbon`, JPG/JPEG/PNG/PDF maksimal 5 MiB; memakai tenggat pendaftaran.
 
-`is_minor` dihitung dari `birth_date` (true jika umur < 18 tahun saat dicek; null jika `birth_date` belum diisi).
+## Tim dan submission
+
+| Method | Path | Request / respons |
+| --- | --- | --- |
+| POST | `/api/teams` | Peserta; `{name}` → 201 `{team}` |
+| POST | `/api/teams/join` | Peserta; `{code}` → `{team}` |
+| GET | `/api/teams/me` | Login; `{team}`, null jika belum punya tim |
+| POST | `/api/teams/me/leave` | Peserta; 204 |
+| DELETE | `/api/teams/me/members/{user_id}` | Ketua; 204 |
+| POST | `/api/teams/me/proposal` | Ketua; PDF maks 10 MiB → 201 ItemMeta |
+| POST | `/api/teams/me/video` | Ketua; MP4 maks 100 MiB → 201 ItemMeta |
+| PUT | `/api/teams/me/repo` | Ketua; `{repo_url}` → `{repo_url}` |
+| POST | `/api/teams/me/finalize` | Ketua; `{confirm: true}` → `{team}` final |
+| GET | `/api/items/{item_id}` | Sesuai hak akses; isi item; `?download=1` untuk attachment |
+
+`Team`: `id, name, code, status, leader_id, created_at, finalized_at, members, submission, finalize_missing`. Anggota memuat nama, status ketua, kelengkapan profil dan dokumen. Submission memuat metadata proposal/video dan URL repo.
+
+Tim final terkunci. Finalisasi membutuhkan profil, dokumen, dan karya lengkap; verifikasi terverifikasi tidak disyaratkan. Buat/gabung tim memakai tenggat pendaftaran, karya/finalisasi memakai tenggat pengumpulan. Respons file memakai `Cache-Control: no-store` dan `X-Content-Type-Options: nosniff`.
+
+## Juri
+
+| Method | Path | Respons |
+| --- | --- | --- |
+| GET | `/api/juri/teams` | `{teams: [{id, name, finalized_at, member_count}]}` |
+| GET | `/api/juri/teams/{team_id}` | `{team: {id, name, finalized_at, members, proposal, video, repo_url}}` |
+
+Hanya tim final yang ditugaskan. Pembukaan item juga memeriksa penugasan. Juri tidak dapat membuka KTP/KTM/twibbon; akses yang ditolak dijawab 404.
+
+## Superadmin
+
+| Method | Path | Request / respons |
+| --- | --- | --- |
+| GET | `/api/admin/participants` | Pagination dan filter `status` |
+| GET | `/api/admin/participants/{user_id}` | Profil, dokumen, status, catatan dan tim |
+| PATCH | `/api/admin/participants/{user_id}` | `{verification_status, note?}`; note wajib jika ditolak |
+| GET | `/api/admin/teams` | Daftar tim berpaginasi |
+| GET | `/api/admin/juri` | `{juri: [{user_id, email, created_at}]}` |
+| POST | `/api/admin/juri` | `{email, password}` → 201 `{user_id, email, role}` |
+| PUT | `/api/admin/juri/{juri_id}/assignments` | `{team_ids: [...]}`; mengganti seluruh penugasan |
+| GET | `/api/admin/settings` | Pengaturan publik, versi dan teks kebijakan |
+| PUT | `/api/admin/settings` | Subset pengaturan → pengaturan publik terbaru |
+| GET | `/api/admin/audit-logs` | Pagination; filter `actor_id, action, from, to` |
+| GET | `/api/admin/benchmarks` | Filter `source, operation, run_id`; `{run_id, source, env, rows, runs}` |
+
+Pengaturan: `registration_deadline, submission_deadline, min_team_size, max_team_size, privacy_policy_version, privacy_policy_text`. Tenggat boleh null; ukuran tim default 2–4. Setting lama `deadline_at` dan `max_team_members` tetap dibaca sebagai fallback. ID audit berupa string UUID.
+
+Benchmark merangkum satu run pada satu source; default source `controlled` dan run terbaru. Tanpa data, `run_id` dan `env` null, `rows` dan `runs` kosong. Durasi memakai ns; throughput memakai MB/s desimal dan menyediakan median/Q1/Q3 tersendiri. Throughput `wrap` null. Pencatatan live otomatis, sedangkan controlled dihasilkan melalui CLI. Kontrak lengkap untuk frontend dan cara menjalankan ada di [BENCHMARK_FRONTEND.md](BENCHMARK_FRONTEND.md).
+
+Pengaturan publik, daftar dokumen, daftar tim admin, dan daftar juri adalah endpoint tambahan untuk frontend. Kontrak TypeScript lengkap ada di `frontend/src/api/types.ts`.

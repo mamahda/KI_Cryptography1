@@ -9,7 +9,7 @@ Platform web pendaftaran Schematics NIC (hackathon khusus mahasiswa) untuk Assig
 | Pengguna | Peserta (ketua dan anggota tim), juri, superadmin |
 | Data yang disimpan | Data diri, scan KTP, scan KTM/KRSM, bukti twibbon, proposal (PDF), video demo (MP4), link GitHub |
 | Tech stack | React, Python FastAPI, SQLite, PyCryptodome; sesi memakai JWT di cookie |
-| Kontrak API | Dokumentasi API |
+| Kontrak API | [Dokumentasi API](backend/API.md) |
 | Di luar cakupan | Penilaian juri, pembayaran, verifikasi email, masa retensi, deployment produksi |
 
 ## Skenario dan data
@@ -37,11 +37,11 @@ Server memeriksa matriks ini di setiap request, dan setiap akses juri atau super
 | Aksi | Peserta | Juri | Superadmin |
 | --- | --- | --- | --- |
 | Melihat dan mengubah data diri serta dokumen sendiri | Ya | — | — |
-| Melihat data diri peserta lain | Nama rekan setim saja | Nama dan institusi anggota tim yang sudah final | Semua, tercatat |
+| Melihat data diri peserta lain | Nama rekan setim saja | Nama dan institusi anggota tim final yang ditugaskan | Semua, tercatat |
 | Membuka scan KTP, KTM/KRSM, twibbon milik orang lain | Tidak | Tidak | Ya, tercatat |
 | Membuat tim, bergabung, keluar dari tim | Ya, sebelum final | — | — |
 | Mengunggah karya, submit final, mengeluarkan anggota | Ketua saja | — | — |
-| Membuka proposal, video, link GitHub | Tim sendiri | Semua tim yang sudah final, tercatat | Semua tim |
+| Membuka proposal, video, link GitHub | Tim sendiri | Tim final yang ditugaskan, tercatat | Semua tim |
 | Verifikasi peserta, akun juri, tenggat, audit log, benchmark | — | — | Ya |
 
 Item yang tidak boleh dibuka dijawab 404, sama seperti item yang tidak ada, agar ID item tidak bisa diuji keberadaannya.
@@ -52,7 +52,7 @@ Status verifikasi peserta dan status tim berjalan terpisah: tim boleh submit fin
 
 1. **Peserta:** daftar, login, setujui privasi, isi data diri, unggah tiga dokumen (status menjadi "menunggu verifikasi"), buat atau gabung tim. Ketua lalu mengunggah karya dan submit final. Kapan saja peserta bisa membuka datanya sendiri.
 2. **Superadmin:** memeriksa peserta, menerima atau menolak dengan alasan (termasuk memutuskan peserta di bawah 18 tahun), membuat akun juri, mengatur tenggat, memantau audit log dan benchmark.
-3. **Juri:** melihat semua tim yang sudah final, membuka proposal, video, dan link GitHub, lalu menilai di luar platform.
+3. **Juri:** melihat tim final yang ditugaskan, membuka proposal, video, dan link GitHub, lalu menilai di luar platform.
 
 ### Aturan transisi
 
@@ -74,7 +74,7 @@ Setiap modul di bawah punya endpoint di Dokumentasi API; aturan di kolom kanan d
 | Tim | Buat tim, kode tim, gabung, keluar, keluarkan anggota | Kode 8 karakter acak dibuat sekali; 2–4 orang termasuk ketua; satu peserta satu tim; rate limit gabung; terkunci setelah final |
 | Submission | Proposal PDF (maks 10 MB), video MP4 (maks 100 MB), link GitHub, submit final | Hanya ketua; unggah ulang menggantikan versi lama; submit final dengan konfirmasi dua langkah |
 | File | Membuka file milik sendiri, tim, atau sesuai peran | HMAC ketiga ciphertext diverifikasi, ketiganya didekripsi penuh dan dicocokkan, baru dikirim; video diputar setelah file utuh diterima |
-| Juri | Daftar semua tim final, detail tiap tim | Tidak ada form nilai |
+| Juri | Daftar tim final yang ditugaskan, detail tiap tim | Tidak ada form nilai |
 | Superadmin | Peserta, verifikasi, akun juri, tenggat dan batas anggota, daftar tim, audit log, benchmark | Penolakan wajib beralasan; superadmin tidak bisa mengubah isi data peserta |
 | Audit | Pencatatan otomatis | Akses ke data orang lain, keputusan verifikasi, akun juri, perubahan pengaturan, kegagalan HMAC; log tanpa isi data pribadi |
 
