@@ -1,87 +1,79 @@
-"""Modul Juri: daftar semua tim final dan detailnya. Tidak ada form nilai."""
+"""Daftar dan detail tim final yang ditugaskan kepada juri."""
 
 import sqlite3
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
-from starlette import status
 
 from app.core.security import CurrentUser, require_roles
 from app.db.audit import log_action
-from app.db.items import get_active_item, read_item
+from app.db.items import read_item
+from app.db.views import team_data
 from app.dependencies import get_db
 
-router = APIRouter(prefix="/judges", tags=["judges"])
+router = APIRouter(prefix="/juri", tags=["juri"])
 
 
-class FinalTeamOut(BaseModel):
-    id: str
-    team_code: str
-    team_name: str | None
-
-
-class FinalTeamMemberOut(BaseModel):
-    full_name: str | None
-    institution: str | None
-
-
-class FinalTeamDetailOut(BaseModel):
-    id: str
-    team_name: str | None
-    members: list[FinalTeamMemberOut]
-    proposal_item_id: str | None
-    video_item_id: str | None
-    repo_url: str | None
-
-
-@router.get("/teams", response_model=list[FinalTeamOut])
+@router.get("/teams")
 def list_final_teams(
     current_user: CurrentUser = Depends(require_roles("juri")),
     db: sqlite3.Connection = Depends(get_db),
-) -> list[FinalTeamOut]:
-    teams = db.execute("SELECT id, team_code FROM teams WHERE status = 'final'").fetchall()
-    result = [
-        FinalTeamOut(
-            id=team["id"],
-            team_code=team["team_code"],
-            team_name=read_item(db, owner_team_id=team["id"], field="team_name"),
+) -> dict:
+    rows = db.execute(
+        "SELECT t.* FROM teams t JOIN juri_assignments a ON t.id = a.team_id WHERE a.juri_id = ? AND t.status = 'final' ORDER BY t.finalized_at",
+        (current_user.id,),
+    ).fetchall()
+    teams = []
+    for row in rows:
+        count = db.execute(
+            "SELECT COUNT(*) FROM team_members WHERE team_id = ?", (row["id"],)
+        ).fetchone()[0]
+        teams.append(
+            {
+                "id": row["id"],
+                "name": read_item(db, owner_team_id=row["id"], field="team_name") or "",
+                "finalized_at": row["finalized_at"],
+                "member_count": count,
+            }
         )
-        for team in teams
-    ]
-    log_action(db, actor_id=current_user.id, action="list_final_teams")
-    return result
+    return {"teams": teams}
 
 
-@router.get("/teams/{team_id}", response_model=FinalTeamDetailOut)
+@router.get("/teams/{team_id}")
 def get_final_team_detail(
     team_id: str,
     current_user: CurrentUser = Depends(require_roles("juri")),
     db: sqlite3.Connection = Depends(get_db),
-) -> FinalTeamDetailOut:
-    team = db.execute("SELECT * FROM teams WHERE id = ? AND status = 'final'", (team_id,)).fetchone()
-    if team is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND)
-
-    member_rows = db.execute(
-        "SELECT user_id FROM team_members WHERE team_id = ?", (team_id,)
-    ).fetchall()
-    members = [
-        FinalTeamMemberOut(
-            full_name=read_item(db, owner_user_id=row["user_id"], field="full_name"),
-            institution=read_item(db, owner_user_id=row["user_id"], field="institution"),
+) -> dict:
+    row = db.execute(
+        "SELECT t.* FROM teams t JOIN juri_assignments a ON t.id = a.team_id WHERE t.id = ? AND a.juri_id = ? AND t.status = 'final'",
+        (team_id, current_user.id),
+    ).fetchone()
+    if row is None:
+        raise HTTPException(404, "Tim tidak ditemukan")
+    team = team_data(db, row)
+    members = []
+    for member in team["members"]:
+        members.append(
+            {
+                "full_name": member["full_name"],
+                "institution": read_item(
+                    db, owner_user_id=member["user_id"], field="institution"
+                ),
+                "is_leader": member["is_leader"],
+            }
         )
-        for row in member_rows
-    ]
-
-    proposal = get_active_item(db, field="proposal", owner_team_id=team_id)
-    video = get_active_item(db, field="video", owner_team_id=team_id)
-    log_action(db, actor_id=current_user.id, action="view_team_detail")
-
-    return FinalTeamDetailOut(
-        id=team["id"],
-        team_name=read_item(db, owner_team_id=team_id, field="team_name"),
-        members=members,
-        proposal_item_id=proposal["id"] if proposal else None,
-        video_item_id=video["id"] if video else None,
-        repo_url=read_item(db, owner_team_id=team_id, field="repo_url"),
-    )
+        log_action(
+            db,
+            actor_id=current_user.id,
+            action="view_profile",
+            subject_user_id=member["user_id"],
+        )
+    return {
+        "team": {
+            "id": row["id"],
+            "name": team["name"],
+            "finalized_at": row["finalized_at"],
+            "members": members,
+            **team["submission"],
+        }
+    }

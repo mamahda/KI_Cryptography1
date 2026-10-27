@@ -19,6 +19,12 @@ import type {
   AdminParticipantsQueryParams,
   AdminTeamsListResponse,
   AdminTeamsQueryParams,
+  ChangePasswordRequest,
+  JuriAssignmentsRequest,
+  JuriAssignmentsResponse,
+  MyItemsResponse,
+  MyAccessLogResponse,
+  PaginationParams,
   ConsentRequest,
   ConsentResponse,
   CreateJuriRequest,
@@ -82,6 +88,10 @@ export const apiClient = {
       })
     },
 
+    changePassword(body: ChangePasswordRequest): Promise<void> {
+      return fetchApi<void>('/api/auth/password', { method: 'PUT', body })
+    },
+
     async getMe(signal?: AbortSignal): Promise<GetMeResponse> {
       const result = await fetchApi<Me | { user: Me }>('/api/me', {
         method: 'GET',
@@ -116,6 +126,23 @@ export const apiClient = {
         method: 'POST',
         body,
       })
+    },
+    withdraw(): Promise<void> {
+      return fetchApi<void>('/api/consent', { method: 'DELETE' })
+    },
+  },
+
+  account: {
+    listItems(signal?: AbortSignal): Promise<MyItemsResponse> {
+      return fetchApi<MyItemsResponse>('/api/me/items', { method: 'GET', signal })
+    },
+    listAccessLogs(params?: PaginationParams, signal?: AbortSignal): Promise<MyAccessLogResponse> {
+      return fetchApi<MyAccessLogResponse>('/api/me/access-log', {
+        method: 'GET', query: params as Record<string, QueryParamValue> | undefined, signal,
+      })
+    },
+    getExportUrl(): string {
+      return buildApiUrl('/api/me/export')
     },
   },
 
@@ -254,6 +281,14 @@ export const apiClient = {
   },
 
   admin: {
+    getSettings(signal?: AbortSignal): Promise<PublicSettings> {
+      return fetchApi<PublicSettings>('/api/admin/settings', { method: 'GET', signal })
+    },
+    assignTeams(juriId: string, body: JuriAssignmentsRequest): Promise<JuriAssignmentsResponse> {
+      return fetchApi<JuriAssignmentsResponse>(
+        `/api/admin/juri/${encodeURIComponent(juriId)}/assignments`, { method: 'PUT', body },
+      )
+    },
     listParticipants(
       params?: AdminParticipantsQueryParams,
       signal?: AbortSignal,

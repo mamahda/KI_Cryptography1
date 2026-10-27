@@ -49,7 +49,9 @@ def read_item(
     owner_user_id: str | None = None,
     owner_team_id: str | None = None,
 ) -> str | None:
-    item = get_active_item(db, field=field, owner_user_id=owner_user_id, owner_team_id=owner_team_id)
+    item = get_active_item(
+        db, field=field, owner_user_id=owner_user_id, owner_team_id=owner_team_id
+    )
     return item["value"] if item is not None else None
 
 
@@ -77,11 +79,14 @@ def save_file(
     ext: str,
     content_type: str,
     storage_dir: Path,
+    original_filename: str | None = None,
     owner_user_id: str | None = None,
     owner_team_id: str | None = None,
 ) -> None:
     """Simpan file upload ke storage/, ganti file lama untuk field yang sama."""
-    old = get_active_item(db, field=field, owner_user_id=owner_user_id, owner_team_id=owner_team_id)
+    old = get_active_item(
+        db, field=field, owner_user_id=owner_user_id, owner_team_id=owner_team_id
+    )
     if old is not None and old["path"]:
         (storage_dir / old["path"]).unlink(missing_ok=True)
 
@@ -91,7 +96,15 @@ def save_file(
     filename = f"{uuid4()}.{ext}"
     (storage_dir / filename).write_bytes(data)
     db.execute(
-        f"INSERT INTO items (id, {column}, field, storage, content_type, size_bytes, path) "
-        f"VALUES (?, ?, ?, 'fs', ?, ?, ?)",
-        (str(uuid4()), owner, field, content_type, len(data), filename),
+        f"INSERT INTO items (id, {column}, field, storage, content_type, size_bytes, path, original_filename) "
+        f"VALUES (?, ?, ?, 'fs', ?, ?, ?, ?)",
+        (
+            str(uuid4()),
+            owner,
+            field,
+            content_type,
+            len(data),
+            filename,
+            original_filename,
+        ),
     )

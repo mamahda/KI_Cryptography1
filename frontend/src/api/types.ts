@@ -34,7 +34,7 @@ export type ItemField = (typeof ITEM_FIELDS)[number]
 export const CIPHER_TYPES = ['aes', 'des', 'rc4'] as const
 export type CipherType = (typeof CIPHER_TYPES)[number]
 
-export const BENCHMARK_OPERATIONS = ['enc', 'dec', 'hmac'] as const
+export const BENCHMARK_OPERATIONS = ['enc', 'dec', 'hmac', 'wrap'] as const
 export type BenchmarkOperation = (typeof BENCHMARK_OPERATIONS)[number]
 
 export const BENCHMARK_SOURCES = ['controlled', 'live'] as const
@@ -99,6 +99,7 @@ export interface Me {
   consent: ConsentInfo | null
   current_policy_version: string
   team: MeTeamSummary | null
+  must_change_password?: boolean
 }
 
 export interface TeamMember {
@@ -168,6 +169,11 @@ export type LoginResponse = AuthUserResponse
 
 export type LogoutResponse = void
 
+export interface ChangePasswordRequest {
+  current_password: string
+  new_password: string
+}
+
 export type GetMeResponse = Me
 
 /* -------------------------------------------------------------------------- */
@@ -184,8 +190,8 @@ export interface FileSizeLimits {
 }
 
 export interface PublicSettings {
-  registration_deadline: string
-  submission_deadline: string
+  registration_deadline: string | null
+  submission_deadline: string | null
   min_team_size: number
   max_team_size: number
   limits: FileSizeLimits
@@ -201,6 +207,26 @@ export interface ConsentRequest {
 }
 
 export type ConsentResponse = ConsentInfo
+
+export interface OwnedItemMeta extends Omit<ItemMeta, 'field'> {
+  field: string
+}
+
+export interface MyItemsResponse {
+  items: OwnedItemMeta[]
+}
+
+export interface AccessLogEntry {
+  id: string
+  actor_id: string | null
+  action: string
+  item_id: string | null
+  subject_user_id: string | null
+  result: string
+  created_at: string
+}
+
+export type MyAccessLogResponse = PaginatedResponse<AccessLogEntry>
 
 /* -------------------------------------------------------------------------- */
 /* Participant Profile & Documents Endpoints                                  */
@@ -481,11 +507,21 @@ export interface CreateJuriResponse {
   role: 'juri'
 }
 
+export interface JuriAssignmentsRequest {
+  team_ids: string[]
+}
+
+export interface JuriAssignmentsResponse extends JuriAssignmentsRequest {
+  juri_id: string
+}
+
 export interface UpdateAdminSettingsRequest {
-  registration_deadline: string
-  submission_deadline: string
+  registration_deadline: string | null
+  submission_deadline: string | null
   min_team_size: number
   max_team_size: number
+  privacy_policy_version?: string
+  privacy_policy_text?: string
 }
 
 export type UpdateAdminSettingsResponse = PublicSettings
@@ -498,11 +534,11 @@ export interface AdminAuditLogsQueryParams extends PaginationParams {
 }
 
 export interface AuditLogItem {
-  id: number
+  id: string
   actor_id: string | null
   actor_email: string | null
   actor_role: UserRole | null
-  action: AuditAction
+  action: string
   item_id: string | null
   subject_user_id: string | null
   created_at: string
@@ -534,7 +570,7 @@ export interface BenchmarkRow {
 }
 
 export interface AdminBenchmarksResponse {
-  env: BenchmarkEnv
+  env: BenchmarkEnv | null
   rows: BenchmarkRow[]
 }
 
@@ -558,10 +594,15 @@ export interface ApiEndpointContractMap {
   'POST /api/auth/register': EndpointContract<RegisterRequest, RegisterResponse>
   'POST /api/auth/login': EndpointContract<LoginRequest, LoginResponse>
   'POST /api/auth/logout': EndpointContract<void, LogoutResponse>
+  'PUT /api/auth/password': EndpointContract<ChangePasswordRequest, void>
   'GET /api/me': EndpointContract<void, GetMeResponse>
   'GET /api/settings': EndpointContract<void, PublicSettings>
   'GET /api/policy': EndpointContract<void, PrivacyPolicyResponse>
   'POST /api/consent': EndpointContract<ConsentRequest, ConsentResponse>
+  'DELETE /api/consent': EndpointContract<void, void>
+  'GET /api/me/items': EndpointContract<void, MyItemsResponse>
+  'GET /api/me/access-log': EndpointContract<void, MyAccessLogResponse, void, PaginationParams>
+  'GET /api/me/export': EndpointContract<void, Blob>
   'GET /api/profile': EndpointContract<void, ParticipantProfile>
   'PUT /api/profile': EndpointContract<UpdateProfileRequest, UpdateProfileResponse>
   'GET /api/documents': EndpointContract<void, ParticipantDocumentsResponse>
@@ -619,6 +660,8 @@ export interface ApiEndpointContractMap {
   >
   'GET /api/admin/juri': EndpointContract<void, AdminJuriListResponse>
   'POST /api/admin/juri': EndpointContract<CreateJuriRequest, CreateJuriResponse>
+  'PUT /api/admin/juri/{juri_id}/assignments': EndpointContract<JuriAssignmentsRequest, JuriAssignmentsResponse>
+  'GET /api/admin/settings': EndpointContract<void, PublicSettings>
   'PUT /api/admin/settings': EndpointContract<
     UpdateAdminSettingsRequest,
     UpdateAdminSettingsResponse
