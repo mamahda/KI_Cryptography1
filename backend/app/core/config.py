@@ -6,8 +6,6 @@ from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BACKEND_DIR = Path(__file__).resolve().parents[2]
-# data/ dan storage/ tetap sibling dari backend/ dan frontend/ di root repo.
-REPO_ROOT = BACKEND_DIR.parent
 
 
 class Settings(BaseSettings):
@@ -36,12 +34,12 @@ class Settings(BaseSettings):
     @property
     def database_path_abs(self) -> Path:
         path = Path(self.database_path)
-        return path if path.is_absolute() else REPO_ROOT / path
+        return path if path.is_absolute() else BACKEND_DIR / path
 
     @property
     def storage_dir_abs(self) -> Path:
         path = Path(self.storage_dir)
-        return path if path.is_absolute() else REPO_ROOT / path
+        return path if path.is_absolute() else BACKEND_DIR / path
 
 
 @lru_cache
