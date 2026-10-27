@@ -17,7 +17,7 @@ describe('Authentication, Explicit Privacy Consent & Route Guards', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByRole('heading', { name: /Masuk ke Schematics NIC/i }),
+        screen.getByRole('heading', { name: /^LOGIN$/i }),
       ).toBeInTheDocument()
     })
 
@@ -26,7 +26,7 @@ describe('Authentication, Explicit Privacy Consent & Route Guards', () => {
     await user.click(screen.getByRole('button', { name: /^Masuk$/i }))
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: /Document Manager/i })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: /^DOKUMEN$/ })).toBeInTheDocument()
     })
     expect(screen.getByTestId('session-badge')).toHaveTextContent(
       'budi@mahasiswa.ac.id (peserta)',
@@ -42,7 +42,7 @@ describe('Authentication, Explicit Privacy Consent & Route Guards', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByRole('heading', { name: /Masuk ke Schematics NIC/i }),
+        screen.getByRole('heading', { name: /^LOGIN$/i }),
       ).toBeInTheDocument()
     })
 
@@ -65,7 +65,7 @@ describe('Authentication, Explicit Privacy Consent & Route Guards', () => {
     })
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: /Daftar Akun Peserta/i })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: /^REGISTRASI$/i })).toBeInTheDocument()
     })
 
     // Password too short (< 10 chars)
@@ -115,7 +115,7 @@ describe('Authentication, Explicit Privacy Consent & Route Guards', () => {
     await user.click(submitConsentBtn)
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: /Participant Dashboard/i })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: /^Ruang Peserta$/ })).toBeInTheDocument()
     })
   })
 
@@ -128,7 +128,7 @@ describe('Authentication, Explicit Privacy Consent & Route Guards', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByRole('heading', { name: /Masuk ke Schematics NIC/i }),
+        screen.getByRole('heading', { name: /^LOGIN$/i }),
       ).toBeInTheDocument()
     })
 
@@ -170,7 +170,7 @@ describe('Authentication, Explicit Privacy Consent & Route Guards', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: /Participant Dashboard/i })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: /^Ruang Peserta$/ })).toBeInTheDocument()
     })
   })
 
@@ -201,10 +201,12 @@ describe('Authentication, Explicit Privacy Consent & Route Guards', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByRole('heading', { name: /Masuk ke Schematics NIC/i }),
+        screen.getByRole('heading', { name: /^LOGIN$/i }),
       ).toBeInTheDocument()
     })
-    expect(screen.getByTestId('session-badge')).toHaveTextContent('Guest')
+    // The auth screens carry no bar, so there is no badge; the store is the proof.
+    expect(screen.queryByTestId('session-badge')).not.toBeInTheDocument()
+    expect(useAuthStore.getState().user).toBeNull()
   })
 
   it('renders standalone shadcn ModernLoginSignup via DemoOne and toggles login/register modes', async () => {
@@ -214,15 +216,15 @@ describe('Authentication, Explicit Privacy Consent & Route Guards', () => {
     renderWithProviders(<DemoOne />)
 
     expect(
-      screen.getByRole('heading', { name: /Masuk ke Schematics NIC/i }),
+      screen.getByRole('heading', { name: /^LOGIN$/i }),
     ).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: /Daftar sekarang/i }))
-    expect(screen.getByRole('heading', { name: /Daftar Akun Peserta/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /^REGISTRASI$/i })).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: /Masuk di sini/i }))
     expect(
-      screen.getByRole('heading', { name: /Masuk ke Schematics NIC/i }),
+      screen.getByRole('heading', { name: /^LOGIN$/i }),
     ).toBeInTheDocument()
   })
 })

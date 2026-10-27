@@ -14,7 +14,7 @@ const TONES: Record<StatusTone, { className: string; Icon: typeof Check }> = {
     Icon: Clock,
   },
   idle: {
-    className: 'border-slate-500/50 bg-slate-500/10 text-slate-300',
+    className: 'border-edge bg-white/5 text-ink-2',
     Icon: Circle,
   },
   locked: {
@@ -26,7 +26,7 @@ const TONES: Record<StatusTone, { className: string; Icon: typeof Check }> = {
     Icon: AlertTriangle,
   },
   info: {
-    className: 'border-cyan-400/40 bg-cyan-500/15 text-cyan-200',
+    className: 'border-sky/40 bg-sky/15 text-sky',
     Icon: Info,
   },
 }

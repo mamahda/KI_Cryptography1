@@ -16,7 +16,9 @@ import {
   FOCUS,
   INPUT,
   LABEL,
+  PAGE_TITLE,
   RECESSED,
+  SECTION_HEADING,
   WELL,
 } from '@/components/ui/tokens'
 import { VerificationStatusChip } from '@/components/ui/VerificationStatusChip'
@@ -24,8 +26,8 @@ import { VerificationStatusChip } from '@/components/ui/VerificationStatusChip'
 function ProfileField({ label, value }: { label: string; value: string | null }) {
   return (
     <div className={`${RECESSED} px-3 py-2`}>
-      <dt className="text-xs text-slate-400">{label}</dt>
-      <dd className="mt-0.5 text-sm break-words text-slate-200">{value ?? '—'}</dd>
+      <dt className="text-xs text-ink-3">{label}</dt>
+      <dd className="mt-0.5 text-sm break-words text-ink-2">{value ?? '—'}</dd>
     </div>
   )
 }
@@ -104,14 +106,14 @@ export function AdminParticipantDetailPage() {
     <div className="space-y-6">
       <Link
         to="/admin/participants"
-        className={`inline-flex items-center gap-1.5 text-sm font-medium text-slate-300 transition hover:text-white ${FOCUS}`}
+        className={`inline-flex items-center gap-1.5 text-sm font-medium text-ink-2 transition hover:text-white ${FOCUS}`}
       >
         <ArrowLeft className="h-4 w-4" aria-hidden="true" />
         Kembali ke antrean verifikasi
       </Link>
 
       {detailQuery.isPending ? (
-        <p data-testid="participant-detail-loading" className={`${CARD} p-6 text-sm text-slate-400`}>
+        <p data-testid="participant-detail-loading" className={`${CARD} p-6 text-sm text-ink-3`}>
           Memuat profil peserta...
         </p>
       ) : null}
@@ -135,13 +137,13 @@ export function AdminParticipantDetailPage() {
 
       {detail ? (
         <div data-testid="participant-detail" className="space-y-6">
-          <header className={`${CARD} p-6`}>
+          <header>
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0">
-                <h1 className="text-2xl font-bold tracking-tight text-white">
+                <h1 className={PAGE_TITLE}>
                   {detail.profile.full_name ?? '(nama belum diisi)'}
                 </h1>
-                <p className="mt-1 text-sm break-all text-slate-400">{detail.email}</p>
+                <p className="mt-1 text-sm break-all text-ink-3">{detail.email}</p>
               </div>
               <VerificationStatusChip
                 status={detail.verification_status}
@@ -165,16 +167,16 @@ export function AdminParticipantDetailPage() {
             {detail.verification_note ? (
               <p
                 data-testid="existing-note"
-                className={`mt-3 ${WELL} px-3 py-2.5 text-sm text-slate-300`}
+                className={`mt-3 ${WELL} px-3 py-2.5 text-sm text-ink-2`}
               >
-                <span className="block text-xs text-slate-400">Catatan panitia tersimpan</span>
+                <span className="block text-xs text-ink-3">Catatan panitia tersimpan</span>
                 {detail.verification_note}
               </p>
             ) : null}
           </header>
 
           <section className={`${CARD} p-6`} aria-labelledby="profile-heading">
-            <h2 id="profile-heading" className="text-lg font-semibold text-white">
+            <h2 id="profile-heading" className={SECTION_HEADING}>
               Profil peserta
             </h2>
             <dl
@@ -203,13 +205,9 @@ export function AdminParticipantDetailPage() {
           </section>
 
           <section className={`${CARD} p-6`} aria-labelledby="documents-heading">
-            <h2 id="documents-heading" className="text-lg font-semibold text-white">
+            <h2 id="documents-heading" className={SECTION_HEADING}>
               Dokumen identitas
             </h2>
-            <p className="mt-1 text-sm text-slate-400">
-              Setiap dokumen didekripsi dan diverifikasi oleh server sebelum ditampilkan, dan
-              pembukaannya tercatat di audit log.
-            </p>
             <div data-testid="participant-documents" className="mt-3 space-y-4">
               <ItemBlobViewer field="ktp" label="Scan KTP" item={detail.documents.ktp} />
               <ItemBlobViewer field="ktm" label="KTM / KRSM" item={detail.documents.ktm} />
@@ -218,14 +216,14 @@ export function AdminParticipantDetailPage() {
           </section>
 
           <section className={`${CARD} p-6`} aria-labelledby="decision-heading">
-            <h2 id="decision-heading" className="text-lg font-semibold text-white">
+            <h2 id="decision-heading" className={SECTION_HEADING}>
               Keputusan verifikasi
             </h2>
 
             <div className="mt-3">
               <label htmlFor="note-input" className={LABEL}>
                 Catatan panitia
-                <span className="ml-1 font-normal text-slate-400">
+                <span className="ml-1 font-normal text-ink-3">
                   (wajib saat menolak, opsional saat menyetujui)
                 </span>
               </label>

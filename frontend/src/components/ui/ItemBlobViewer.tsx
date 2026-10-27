@@ -98,16 +98,16 @@ export function ItemBlobViewer({ field, label, item, emptyText }: ItemBlobViewer
     <article data-testid={`artifact-${field}`} className={`${WELL} p-4`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h3 className="flex items-center gap-1.5 text-sm font-semibold text-slate-100">
-            <Icon className="h-4 w-4 text-slate-400" aria-hidden="true" />
+          <h3 className="flex items-center gap-1.5 text-sm font-semibold text-ink">
+            <Icon className="h-4 w-4 text-ink-3" aria-hidden="true" />
             {label}
           </h3>
           {item ? (
-            <p className="mt-1 text-sm break-all text-slate-300">
+            <p className="mt-1 text-sm break-all text-ink-2">
               {item.original_filename ?? '(tanpa nama berkas)'}
             </p>
           ) : (
-            <p className="mt-1 text-sm text-slate-400">
+            <p className="mt-1 text-sm text-ink-3">
               {emptyText ?? 'Tidak ada berkas yang diunggah.'}
             </p>
           )}
@@ -130,22 +130,22 @@ export function ItemBlobViewer({ field, label, item, emptyText }: ItemBlobViewer
       {item ? (
         <dl className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
           <div className={`${RECESSED} px-3 py-2`}>
-            <dt className="text-xs text-slate-400">Ukuran</dt>
-            <dd className="mt-0.5 text-sm tabular-nums text-slate-200">
+            <dt className="text-xs text-ink-3">Ukuran</dt>
+            <dd className="mt-0.5 text-sm tabular-nums text-ink-2">
               {formatBytes(item.size_bytes)}
             </dd>
           </div>
           <div className={`${RECESSED} px-3 py-2`}>
-            <dt className="text-xs text-slate-400">Tipe</dt>
-            <dd className="mt-0.5 text-sm text-slate-200">{item.content_type}</dd>
+            <dt className="text-xs text-ink-3">Tipe</dt>
+            <dd className="mt-0.5 text-sm text-ink-2">{item.content_type}</dd>
           </div>
           <div className={`${RECESSED} px-3 py-2`}>
-            <dt className="text-xs text-slate-400">Diunggah</dt>
-            <dd className="mt-0.5 text-sm text-slate-200">{formatTimestamp(item.uploaded_at)}</dd>
+            <dt className="text-xs text-ink-3">Diunggah</dt>
+            <dd className="mt-0.5 text-sm text-ink-2">{formatTimestamp(item.uploaded_at)}</dd>
           </div>
           <div className={`${RECESSED} px-3 py-2 sm:col-span-3`}>
-            <dt className="text-xs text-slate-400">Item ID</dt>
-            <dd className="mt-0.5 font-mono text-xs break-all text-slate-300">{item.item_id}</dd>
+            <dt className="text-xs text-ink-3">Item ID</dt>
+            <dd className="mt-0.5 font-mono text-xs break-all text-ink-2">{item.item_id}</dd>
           </div>
         </dl>
       ) : null}
@@ -178,7 +178,7 @@ export function ItemBlobViewer({ field, label, item, emptyText }: ItemBlobViewer
           data-testid="artifact-viewer-pdf"
           src={objectUrl}
           title={`${label} — ${item?.original_filename ?? 'berkas'}`}
-          className="mt-3 h-[32rem] w-full rounded-xl border border-[#243049] bg-black"
+          className="mt-3 h-[32rem] w-full rounded-xl border border-edge bg-black"
         />
       ) : null}
 
@@ -187,7 +187,7 @@ export function ItemBlobViewer({ field, label, item, emptyText }: ItemBlobViewer
           data-testid="artifact-viewer-video"
           src={objectUrl}
           controls
-          className="mt-3 w-full rounded-xl border border-[#243049] bg-black"
+          className="mt-3 w-full rounded-xl border border-edge bg-black"
         >
           <track kind="captions" />
         </video>
@@ -198,7 +198,7 @@ export function ItemBlobViewer({ field, label, item, emptyText }: ItemBlobViewer
           data-testid="artifact-viewer-image"
           src={objectUrl}
           alt={`${label} — ${item?.original_filename ?? 'berkas'}`}
-          className="mt-3 max-h-[32rem] w-full rounded-xl border border-[#243049] bg-black object-contain"
+          className="mt-3 max-h-[32rem] w-full rounded-xl border border-edge bg-black object-contain"
         />
       ) : null}
     </article>

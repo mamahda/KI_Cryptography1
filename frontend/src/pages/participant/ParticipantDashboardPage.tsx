@@ -9,7 +9,6 @@ import {
   FileCheck2,
   Minus,
   RefreshCw,
-  ShieldCheck,
   Users,
   XCircle,
 } from 'lucide-react'
@@ -28,6 +27,15 @@ import { DocumentsSection } from '@/pages/participant/sections/DocumentsSection'
 import { TeamSection } from '@/pages/participant/sections/TeamSection'
 import { VideoSection } from '@/pages/participant/sections/VideoSection'
 import { useAuthStore } from '@/stores/authStore'
+import {
+  BTN_PRIMARY,
+  BTN_SECONDARY,
+  CARD,
+  FOCUS,
+  PAGE_TITLE,
+  SECTION_HEADING,
+  WELL,
+} from '@/components/ui/tokens'
 
 /**
  * Dashboard surfaces use two depths only. Cards are *elevated* (`#121212`) and
@@ -40,14 +48,6 @@ import { useAuthStore } from '@/stores/authStore'
  * the countdown, the policy version, the invite code, readiness counts. Prose
  * stays in the sans face.
  */
-const CARD =
-  'rounded-2xl border border-[#243049] bg-[#141d2e] shadow-[0_18px_50px_rgba(0,0,0,0.45)]'
-const WELL = 'rounded-xl border border-[#243049] bg-[#0e1626]'
-const FOCUS =
-  'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300'
-const BTN_PRIMARY = `inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-cyan-400 to-sky-500 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:from-cyan-300 hover:to-sky-400 ${FOCUS}`
-const BTN_SECONDARY = `inline-flex items-center gap-1.5 rounded-xl border border-[#243049] bg-[#0e1626] px-3.5 py-2 text-sm font-medium text-slate-200 transition hover:border-cyan-400/60 hover:text-white ${FOCUS}`
-const SECTION_HEADING = 'px-1 text-sm font-semibold tracking-wide text-slate-200 uppercase'
 
 const VERIFICATION_BADGE_MAP: Record<
   VerificationStatus,
@@ -55,7 +55,7 @@ const VERIFICATION_BADGE_MAP: Record<
 > = {
   belum_lengkap: {
     label: 'Belum Lengkap',
-    className: 'border-zinc-700 bg-zinc-900 text-slate-300',
+    className: 'border-edge bg-panel text-ink-2',
   },
   menunggu: {
     label: 'Menunggu Verifikasi',
@@ -94,7 +94,7 @@ function StatusChip({ label, ready }: StatusChipProps) {
       className={`flex items-center justify-center gap-1.5 rounded-xl border px-2 py-1.5 text-center text-sm ${
         ready
           ? 'border-emerald-500/30 bg-emerald-950/30 text-emerald-200'
-          : 'border-[#1e293f] bg-[#0e1626] text-slate-400'
+          : 'border-edge-soft bg-well text-ink-3'
       }`}
     >
       {ready ? (
@@ -108,7 +108,7 @@ function StatusChip({ label, ready }: StatusChipProps) {
   )
 }
 
-interface CountdownCardProps {
+interface DeadlineRowProps {
   testId: string
   title: string
   subtitle: string
@@ -116,28 +116,20 @@ interface CountdownCardProps {
   nowMs: number
 }
 
-function DeadlineCountdownCard({
-  testId,
-  title,
-  subtitle,
-  deadlineIso,
-  nowMs,
-}: CountdownCardProps) {
+/** One deadline in the header's timeline: its name, date, state and live clock. */
+function DeadlineRow({ testId, title, subtitle, deadlineIso, nowMs }: DeadlineRowProps) {
   const snapshot = deadlineIso ? computeCountdown(deadlineIso, nowMs) : null
   const formattedDate = deadlineIso ? formatDeadlineDisplay(deadlineIso) : 'Belum ditetapkan'
 
   return (
-    <div
-      data-testid={testId}
-      className={`flex flex-col justify-between ${CARD} p-5`}
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2 text-sm font-medium text-slate-400">
-            <Clock className="h-4 w-4 text-slate-300" aria-hidden="true" />
-            <span>{subtitle}</span>
-          </div>
-          <h3 className="mt-1 text-base font-semibold text-white">{title}</h3>
+    <li data-testid={testId} className="py-3 first:pt-0 last:pb-0">
+      <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
+        <div className="min-w-0">
+          <p className="flex items-center gap-1.5 text-xs font-medium text-ink-3">
+            <Clock className="h-3.5 w-3.5" aria-hidden="true" />
+            {subtitle}
+          </p>
+          <h3 className="mt-0.5 text-sm font-semibold text-white">{title}</h3>
         </div>
 
         {snapshot && (
@@ -154,34 +146,25 @@ function DeadlineCountdownCard({
       </div>
 
       {snapshot ? (
-        <div className="mt-4 grid grid-cols-4 gap-2 text-center">
-          {[
-            { value: snapshot.days, unit: 'Hari' },
-            { value: snapshot.hours, unit: 'Jam' },
-            { value: snapshot.minutes, unit: 'Menit' },
-            { value: snapshot.seconds, unit: 'Detik' },
-          ].map((segment) => (
-            <div
-              key={segment.unit}
-              className="rounded-xl border border-[#1e293f] bg-[#0e1626] px-1.5 py-2.5"
-            >
-              <div className="font-mono text-2xl font-semibold text-white tabular-nums sm:text-3xl">
-                {String(segment.value).padStart(2, '0')}
-              </div>
-              <div className="mt-1 text-xs tracking-wider text-slate-400 uppercase">
-                {segment.unit}
-              </div>
-            </div>
-          ))}
+        <div className="mt-2 flex flex-wrap items-baseline gap-x-4 gap-y-1">
+          <p className="text-lg font-semibold text-white tabular-nums">
+            {[
+              [snapshot.days, 'h'],
+              [snapshot.hours, 'j'],
+              [snapshot.minutes, 'm'],
+              [snapshot.seconds, 'd'],
+            ]
+              .map(([value, unit]) => `${String(value).padStart(2, '0')}${unit}`)
+              .join(' ')}
+          </p>
+          <p className="text-xs text-ink-3">
+            Batas akhir: <span className="text-ink-2">{formattedDate}</span>
+          </p>
         </div>
       ) : (
-        <p className="mt-4 text-sm text-slate-400">Format waktu tenggat tidak valid.</p>
+        <p className="mt-2 text-sm text-ink-3">Format waktu tenggat tidak valid.</p>
       )}
-
-      <p className="mt-3 text-sm text-slate-400">
-        Batas akhir: <span className="text-slate-200">{formattedDate}</span>
-      </p>
-    </div>
+    </li>
   )
 }
 
@@ -257,47 +240,22 @@ export function ParticipantDashboardPage() {
     ? team.members.filter((m) => m.profile_complete && m.documents_complete).length
     : 0
 
-  /**
-   * The hero shows whichever competition deadline is next, falling back to the
-   * submission deadline once registration has closed.
-   */
-  const registrationSnapshot = settings
-    ? computeCountdown(settings.registration_deadline, nowMs)
-    : null
-  const submissionSnapshot = settings
-    ? computeCountdown(settings.submission_deadline, nowMs)
-    : null
-  const heroCountdown =
-    registrationSnapshot && !registrationSnapshot.expired
-      ? { label: 'Tenggat Pendaftaran Peserta', snapshot: registrationSnapshot }
-      : submissionSnapshot
-        ? { label: 'Tenggat Pengumpulan Karya', snapshot: submissionSnapshot }
-        : registrationSnapshot
-          ? { label: 'Tenggat Pendaftaran Peserta', snapshot: registrationSnapshot }
-          : null
-
   return (
     <div className="space-y-6">
-      {/* Hero banner (reference: gradient panel + live countdown) */}
+      {/* The screen opens on its title and the one deadline that governs it,
+          flat on the page ground: the portal has no tinted hero band. */}
       <section
         data-testid="dashboard-hero"
-        className="relative overflow-hidden rounded-2xl border border-cyan-400/25 bg-gradient-to-br from-[#0e3b4d] via-[#123050] to-[#16233f] p-6 shadow-[0_18px_50px_rgba(0,0,0,0.45)] sm:p-8"
+        className={`relative overflow-hidden ${CARD} p-6 sm:p-8`}
       >
         <div className="flex flex-wrap items-start justify-between gap-6">
           <div className="min-w-0 max-w-xl">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-cyan-300/30 bg-cyan-400/10 px-3 py-1 text-xs font-semibold text-cyan-100">
-              <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
-              Schematics NIC · Ruang Peserta
-            </span>
-            <h1 className="mt-3 text-3xl font-bold tracking-tight text-white">
-              Participant Dashboard
-            </h1>
-            <p className="mt-2 text-sm leading-relaxed text-slate-200">
+            <h1 className={PAGE_TITLE}>Ruang Peserta</h1>
+            <p className="mt-2 text-sm leading-relaxed text-ink-2">
               Selamat datang,{' '}
               <span className="font-semibold text-white">
                 {profile?.full_name || user?.full_name || user?.email || 'Peserta'}
               </span>
-              . Seluruh pendaftaran, dokumen, tim, dan karya Anda dikelola di halaman ini.
             </p>
 
             <button
@@ -315,38 +273,34 @@ export function ParticipantDashboardPage() {
             </button>
           </div>
 
-          {heroCountdown ? (
-            <div data-testid="hero-countdown" className="shrink-0">
-              <p className="flex items-center gap-1.5 text-sm font-medium text-cyan-100">
-                <Clock className="h-4 w-4" aria-hidden="true" />
-                {heroCountdown.label}
-              </p>
-              <div className="mt-2.5 flex items-center gap-2.5">
-                {[
-                  { value: heroCountdown.snapshot.days, unit: 'Hari' },
-                  { value: heroCountdown.snapshot.hours, unit: 'Jam' },
-                  { value: heroCountdown.snapshot.minutes, unit: 'Menit' },
-                  { value: heroCountdown.snapshot.seconds, unit: 'Detik' },
-                ].map((segment) => (
-                  <div
-                    key={segment.unit}
-                    className="flex h-20 w-20 flex-col items-center justify-center rounded-full border border-cyan-300/40 bg-[#0b1a2b]/80 shadow-[0_0_24px_rgba(34,211,238,0.18)]"
-                  >
-                    <span className="text-xs tracking-wide text-cyan-200 uppercase">
-                      {segment.unit}
-                    </span>
-                    <span className="font-mono text-2xl font-bold tabular-nums text-white">
-                      {String(segment.value).padStart(2, '0')}
-                    </span>
-                  </div>
-                ))}
-              </div>
-              <p className="mt-2 text-center text-sm font-medium text-slate-200">
-                {heroCountdown.snapshot.expired ? 'Tenggat telah terlewat' : 'Menuju tenggat'}
-              </p>
-            </div>
-          ) : null}
         </div>
+
+        {settings && (
+          <section
+            aria-labelledby="timeline-heading"
+            className="mt-6 border-t border-edge-soft pt-5"
+          >
+            <h2 id="timeline-heading" className={SECTION_HEADING}>
+              Timeline
+            </h2>
+            <ul className="mt-3 divide-y divide-edge-soft">
+              <DeadlineRow
+                testId="registration-countdown-card"
+                subtitle="Pendaftaran & Dokumen"
+                title="Tenggat Pendaftaran Peserta"
+                deadlineIso={settings.registration_deadline}
+                nowMs={nowMs}
+              />
+              <DeadlineRow
+                testId="submission-countdown-card"
+                subtitle="Proposal, Video & Finalisasi"
+                title="Tenggat Pengumpulan Karya"
+                deadlineIso={settings.submission_deadline}
+                nowMs={nowMs}
+              />
+            </ul>
+          </section>
+        )}
       </section>
 
       {/* Rejection Reason Alert (ditolak) */}
@@ -354,7 +308,7 @@ export function ParticipantDashboardPage() {
         <section
           role="alert"
           data-testid="rejection-alert"
-          className="rounded-2xl border border-rose-500/40 bg-rose-950/35 p-5 text-rose-100 shadow-[0_10px_30px_rgba(0,0,0,0.6)]"
+          className="rounded-2xl border border-rose-400/40 bg-rose-500/10 p-5 text-rose-100"
         >
           <div className="flex items-start gap-3">
             <XCircle className="mt-0.5 h-5 w-5 shrink-0 text-rose-400" aria-hidden="true" />
@@ -379,7 +333,7 @@ export function ParticipantDashboardPage() {
                 </a>
                 <Link
                   to="/profile"
-                  className={`inline-flex items-center gap-1.5 rounded-xl border border-rose-400/40 bg-[#0e1626]/60 px-3.5 py-2 text-sm font-semibold text-white transition hover:border-rose-300 ${FOCUS}`}
+                  className={`inline-flex items-center gap-1.5 rounded-xl border border-rose-400/40 bg-well/60 px-3.5 py-2 text-sm font-semibold text-white transition hover:border-rose-300 ${FOCUS}`}
                 >
                   Periksa Data Diri
                 </Link>
@@ -403,7 +357,7 @@ export function ParticipantDashboardPage() {
           <button
             type="button"
             onClick={handleRetryAll}
-            className={`inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-amber-400/40 bg-[#0e1626] px-3.5 py-2 text-sm font-semibold text-amber-100 transition hover:bg-amber-950 ${FOCUS}`}
+            className={`inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-amber-400/40 bg-well px-3.5 py-2 text-sm font-semibold text-amber-100 transition hover:bg-amber-950 ${FOCUS}`}
           >
             <RefreshCw
               className={`h-4 w-4 ${isRefreshing ? 'motion-safe:animate-spin' : ''}`}
@@ -419,29 +373,37 @@ export function ParticipantDashboardPage() {
         <div
           role="status"
           data-testid="dashboard-loading"
-          className={`flex items-center justify-center gap-2.5 ${CARD} p-6 text-sm text-slate-300`}
+          className={`flex items-center justify-center gap-2.5 ${CARD} p-6 text-sm text-ink-2`}
         >
           <RefreshCw
-            className="h-4 w-4 shrink-0 text-slate-400 motion-safe:animate-spin"
+            className="h-4 w-4 shrink-0 text-ink-3 motion-safe:animate-spin"
             aria-hidden="true"
           />
           Memuat ringkasan pendaftaran, tenggat waktu, dan status tim...
         </div>
       )}
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <div className="min-w-0 space-y-6">
+      <section
+        data-testid="announcement-card"
+        aria-labelledby="announcement-heading"
+        className={`${CARD} p-6 text-center`}
+      >
+        <h2 id="announcement-heading" className="text-lg font-bold text-sky">
+          Pengumuman
+        </h2>
+        <p className="mt-2 text-sm text-ink-2">
+          {settings
+            ? 'Belum ada pengumuman baru dari panitia.'
+            : 'Pengumuman panitia akan tampil di sini.'}
+        </p>
+      </section>
+
+      <div className="space-y-6">
       {/* Dual Status Cards (Verification + Team) */}
       <section aria-labelledby="readiness-heading" className="space-y-3">
-        <div className="px-1">
-          <h2 id="readiness-heading" className="text-sm font-semibold tracking-wide text-slate-200 uppercase">
-            Status Verifikasi &amp; Kesiapan Tim
-          </h2>
-          <p className="mt-1 max-w-prose text-sm text-slate-400">
-            Verifikasi peserta dan status tim berjalan independen — tim boleh submit final
-            sebelum verifikasi superadmin selesai.
-          </p>
-        </div>
+        <h2 id="readiness-heading" className={`px-1 ${SECTION_HEADING}`}>
+          Status Verifikasi &amp; Kesiapan Tim
+        </h2>
 
         <div className="grid gap-4">
           {/* Card 1: Participant Verification Status */}
@@ -450,19 +412,14 @@ export function ParticipantDashboardPage() {
             className={`flex flex-col justify-between ${CARD} p-6`}
           >
             <div>
-              <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#243049] pb-4">
+              <div className="flex flex-wrap items-start justify-between gap-3 border-b border-edge pb-4">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#243049] bg-[#0e1626] text-white">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-edge bg-well text-white">
                     <FileCheck2 className="h-5 w-5" aria-hidden="true" />
                   </div>
-                  <div>
-                    <h3 className="text-base font-semibold text-white">
-                      Status Verifikasi Peserta
-                    </h3>
-                    <p className="text-sm text-slate-400">
-                      Kelengkapan data diri &amp; 3 dokumen identitas
-                    </p>
-                  </div>
+                  <h3 className="text-base font-semibold text-white">
+                    Status Verifikasi Peserta
+                  </h3>
                 </div>
 
                 <span
@@ -475,7 +432,7 @@ export function ParticipantDashboardPage() {
 
               <ul className="mt-4 space-y-3 text-sm">
                 <li className={`flex items-center justify-between gap-3 ${WELL} px-3.5 py-2.5`}>
-                  <span className="text-slate-300">Persetujuan Privasi UU PDP</span>
+                  <span className="text-ink-2">Persetujuan Privasi UU PDP</span>
                   <span className="inline-flex shrink-0 items-center gap-1.5 font-medium text-emerald-300">
                     <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
                     <span className="font-mono tabular-nums">
@@ -489,9 +446,9 @@ export function ParticipantDashboardPage() {
 
                 <li className={`flex items-center justify-between gap-3 ${WELL} px-3.5 py-2.5`}>
                   <div className="min-w-0">
-                    <p className="text-slate-300">Data Diri Peserta (7 Field)</p>
+                    <p className="text-ink-2">Data Diri Peserta (7 Field)</p>
                     {profile?.institution && (
-                      <p className="mt-0.5 text-slate-400">
+                      <p className="mt-0.5 text-ink-3">
                         {profile.full_name} · {profile.institution}
                       </p>
                     )}
@@ -511,8 +468,8 @@ export function ParticipantDashboardPage() {
 
                 <li className={`${WELL} px-3.5 py-3`}>
                   <div className="flex items-center justify-between gap-3">
-                    <span className="text-slate-300">Dokumen Identitas Wajib</span>
-                    <span className="shrink-0 font-medium text-slate-300 tabular-nums">
+                    <span className="text-ink-2">Dokumen Identitas Wajib</span>
+                    <span className="shrink-0 font-medium text-ink-2 tabular-nums">
                       {uploadedDocsCount}/3 terunggah
                     </span>
                   </div>
@@ -558,26 +515,20 @@ export function ParticipantDashboardPage() {
             className={`flex flex-col justify-between ${CARD} p-6`}
           >
             <div>
-              <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#243049] pb-4">
+              <div className="flex flex-wrap items-start justify-between gap-3 border-b border-edge pb-4">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#243049] bg-[#0e1626] text-white">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-edge bg-well text-white">
                     <Users className="h-5 w-5" aria-hidden="true" />
                   </div>
-                  <div>
-                    <h3 className="text-base font-semibold text-white">
-                      Status Tim &amp; Submission
-                    </h3>
-                    <p className="text-sm text-slate-400">
-                      Formasi tim ({settings?.min_team_size ?? 2}–{settings?.max_team_size ?? 4}{' '}
-                      anggota) &amp; pengumpulan karya
-                    </p>
-                  </div>
+                  <h3 className="text-base font-semibold text-white">
+                    Status Tim &amp; Submission
+                  </h3>
                 </div>
 
                 {!team ? (
                   <span
                     data-testid="team-status-badge"
-                    className="rounded-full border border-zinc-700 bg-zinc-900 px-3 py-1 text-xs font-semibold text-slate-300"
+                    className="rounded-full border border-edge bg-panel px-3 py-1 text-xs font-semibold text-ink-2"
                   >
                     Belum Bertim
                   </span>
@@ -591,7 +542,7 @@ export function ParticipantDashboardPage() {
                 ) : (
                   <span
                     data-testid="team-status-badge"
-                    className="rounded-full border border-sky-500/40 bg-sky-950/50 px-3 py-1 text-xs font-semibold text-sky-200"
+                    className="rounded-full border border-sky/40 bg-sky/10 px-3 py-1 text-xs font-semibold text-sky"
                   >
                     Draft
                   </span>
@@ -599,9 +550,9 @@ export function ParticipantDashboardPage() {
               </div>
 
               {!team ? (
-                <div className={`mt-4 ${WELL} p-4 text-sm text-slate-300`}>
+                <div className={`mt-4 ${WELL} p-4 text-sm text-ink-2`}>
                   <p className="font-medium text-white">Anda belum tergabung dalam tim mana pun.</p>
-                  <p className="mt-1 leading-relaxed text-slate-400">
+                  <p className="mt-1 leading-relaxed text-ink-3">
                     Buat tim baru untuk menjadi Ketua Tim dan memperoleh kode undangan 8 karakter,
                     atau gabung ke tim rekan Anda menggunakan kode tim yang sudah ada.
                   </p>
@@ -613,22 +564,22 @@ export function ParticipantDashboardPage() {
                   >
                     <div>
                       <p className="font-semibold text-white">{team.name}</p>
-                      <p className="mt-0.5 text-slate-400">
+                      <p className="mt-0.5 text-ink-3">
                         Peran: {isTeamLeader ? 'Ketua Tim' : 'Anggota'} · Kode:{' '}
-                        <code className="rounded bg-[#18181b] px-1.5 py-0.5 font-mono tracking-wider text-slate-200">
+                        <code className="rounded bg-field px-1.5 py-0.5 font-mono tracking-wider text-ink-2">
                           {team.code}
                         </code>
                       </p>
                     </div>
-                    <span className="font-medium text-slate-300 tabular-nums">
+                    <span className="font-medium text-ink-2 tabular-nums">
                       {readyMembersCount}/{team.members.length} anggota lengkap
                     </span>
                   </div>
 
                   <div className={`${WELL} px-3.5 py-3`}>
                     <div className="flex items-center justify-between gap-3">
-                      <span className="text-slate-300">Komponen Karya Hackathon</span>
-                      <span className="shrink-0 text-slate-400">
+                      <span className="text-ink-2">Komponen Karya Hackathon</span>
+                      <span className="shrink-0 text-ink-3">
                         {team.status === 'final' ? 'Terkunci untuk penjurian' : 'Dapat diperbarui'}
                       </span>
                     </div>
@@ -662,9 +613,9 @@ export function ParticipantDashboardPage() {
                   {team.status === 'draft' && team.finalize_missing.length > 0 && (
                     <div
                       data-testid="finalize-missing-list"
-                      className="rounded-xl border border-[#243049] bg-[#0e1626]/70 px-3.5 py-3 text-slate-400"
+                      className="rounded-xl border border-edge bg-well/70 px-3.5 py-3 text-ink-3"
                     >
-                      <p className="font-medium text-slate-300">Syarat menuju Submit Final:</p>
+                      <p className="font-medium text-ink-2">Syarat menuju Submit Final:</p>
                       <ul className="mt-1.5 space-y-1">
                         {team.finalize_missing.map((item) => (
                           <li key={item} className="flex items-start gap-2">
@@ -709,52 +660,6 @@ export function ParticipantDashboardPage() {
           <div id="video-section" data-testid="video-section" className="scroll-mt-24">
             <VideoSection />
           </div>
-        </div>
-
-        <aside className="space-y-6">
-          <section aria-labelledby="timeline-heading" className="space-y-3">
-            <h2 id="timeline-heading" className={SECTION_HEADING}>
-              Timeline
-            </h2>
-      {/* Live Deadline Countdowns (GET /api/settings) */}
-      {settings && (
-        <section aria-label="Tenggat waktu kompetisi" className="space-y-3">
-          <div className="grid gap-4">
-            <DeadlineCountdownCard
-              testId="registration-countdown-card"
-              subtitle="Pendaftaran & Dokumen"
-              title="Tenggat Pendaftaran Peserta"
-              deadlineIso={settings.registration_deadline}
-              nowMs={nowMs}
-            />
-            <DeadlineCountdownCard
-              testId="submission-countdown-card"
-              subtitle="Proposal, Video & Finalisasi"
-              title="Tenggat Pengumpulan Karya"
-              deadlineIso={settings.submission_deadline}
-              nowMs={nowMs}
-            />
-          </div>
-        </section>
-      )}
-
-          </section>
-
-          <section
-            data-testid="announcement-card"
-            aria-labelledby="announcement-heading"
-            className={`${CARD} p-6 text-center`}
-          >
-            <h2 id="announcement-heading" className="text-lg font-bold text-cyan-200">
-              Pengumuman
-            </h2>
-            <p className="mt-2 text-sm text-slate-300">
-              {settings
-                ? 'Belum ada pengumuman baru dari panitia.'
-                : 'Pengumuman panitia akan tampil di sini.'}
-            </p>
-          </section>
-        </aside>
       </div>
     </div>
   )

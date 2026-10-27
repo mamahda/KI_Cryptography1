@@ -1,8 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { AlertCircle, CheckCircle2, Save, SlidersHorizontal } from 'lucide-react'
+import { AlertCircle, CheckCircle2, Save } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { apiClient, isApiClientError, type PublicSettings } from '@/api'
-import { BTN_PRIMARY, CARD, INPUT, LABEL, WELL } from '@/components/ui/tokens'
+import {
+  BTN_PRIMARY,
+  CARD,
+  INPUT,
+  LABEL,
+  PAGE_TITLE,
+  SECTION_HEADING,
+  WELL,
+} from '@/components/ui/tokens'
 
 interface SettingsForm {
   registration_deadline: string
@@ -13,8 +21,8 @@ interface SettingsForm {
 
 function toForm(settings: PublicSettings): SettingsForm {
   return {
-    registration_deadline: settings.registration_deadline,
-    submission_deadline: settings.submission_deadline,
+    registration_deadline: settings.registration_deadline ?? '',
+    submission_deadline: settings.submission_deadline ?? '',
     min_team_size: String(settings.min_team_size),
     max_team_size: String(settings.max_team_size),
   }
@@ -45,8 +53,9 @@ export function AdminSettingsPage() {
         throw new Error('Pengaturan belum dimuat.')
       }
       return apiClient.admin.updateSettings({
-        registration_deadline: form.registration_deadline.trim(),
-        submission_deadline: form.submission_deadline.trim(),
+        // An empty field clears the deadline; the contract accepts null there.
+        registration_deadline: form.registration_deadline.trim() || null,
+        submission_deadline: form.submission_deadline.trim() || null,
         min_team_size: Number(form.min_team_size),
         max_team_size: Number(form.max_team_size),
       })
@@ -79,7 +88,10 @@ export function AdminSettingsPage() {
     const minSize = Number(form.min_team_size)
     const maxSize = Number(form.max_team_size)
 
-    if (Number.isNaN(Date.parse(registration)) || Number.isNaN(Date.parse(submission))) {
+    const unparseable = [registration, submission].some(
+      (value) => value !== '' && Number.isNaN(Date.parse(value)),
+    )
+    if (unparseable) {
       setFormError(
         'Tenggat harus berupa timestamp ISO 8601 beserta offset, contoh 2026-11-20T23:59:00+07:00.',
       )
@@ -107,27 +119,19 @@ export function AdminSettingsPage() {
 
   return (
     <div data-testid="admin-settings-page" className="space-y-6">
-      <header className={`${CARD} p-6`}>
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-[#243049] bg-[#0e1626] px-3 py-1 text-xs font-medium text-slate-300">
-          <SlidersHorizontal className="h-3.5 w-3.5 text-slate-100" aria-hidden="true" />
-          Superadmin
-        </span>
-        <h1 className="mt-2.5 text-2xl font-bold tracking-tight text-white">
+      <header>
+        <h1 className={PAGE_TITLE}>
           Pengaturan Kompetisi
         </h1>
-        <p className="mt-1.5 max-w-prose text-sm text-slate-400">
-          Tenggat dan ukuran tim berlaku langsung untuk semua peserta. Setiap perubahan dicatat di
-          audit log.
-        </p>
       </header>
 
       <section className={`${CARD} p-6`} aria-labelledby="settings-heading">
-        <h2 id="settings-heading" className="text-lg font-semibold text-white">
+        <h2 id="settings-heading" className={SECTION_HEADING}>
           Tenggat dan ukuran tim
         </h2>
 
         {settingsQuery.isPending ? (
-          <p data-testid="settings-loading" className="mt-3 text-sm text-slate-400">
+          <p data-testid="settings-loading" className="mt-3 text-sm text-ink-3">
             Memuat pengaturan...
           </p>
         ) : null}
@@ -213,7 +217,7 @@ export function AdminSettingsPage() {
               </div>
             </div>
 
-            <p className={`${WELL} px-3 py-2.5 text-xs text-slate-400`}>
+            <p className={`${WELL} px-3 py-2.5 text-xs text-ink-3`}>
               Tenggat memakai format ISO 8601 lengkap dengan offset zona waktu, sehingga tidak ada
               penafsiran ganda antara server dan browser peserta.
             </p>

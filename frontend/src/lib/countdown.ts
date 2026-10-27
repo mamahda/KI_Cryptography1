@@ -10,9 +10,13 @@ export interface CountdownSnapshot {
 }
 
 export function computeCountdown(
-  deadlineIso: string,
+  deadlineIso: string | null,
   nowMs: number = Date.now(),
 ): CountdownSnapshot | null {
+  if (deadlineIso === null) {
+    return null
+  }
+
   const targetMs = Date.parse(deadlineIso)
   if (Number.isNaN(targetMs)) {
     return null

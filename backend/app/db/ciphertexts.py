@@ -10,7 +10,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from app.core.crypto import get_crypto_service
-from app.crypto_services import SealedCiphertext
+from app.crypto_services import IntegrityError, SealedCiphertext
 from app.benchmarking import record_live
 
 
@@ -91,15 +91,9 @@ def _pick_row(rows: list[sqlite3.Row], cipher: str | None) -> sqlite3.Row:
     raise CiphertextNotFound("Item tidak punya ciphertext")
 
 
-def load_plaintext(
-    db: sqlite3.Connection,
-    item_id: str,
-    *,
-    storage_dir: Path | None = None,
-    cipher: str | None = None,
+def _open_row(
+    db: sqlite3.Connection, row: sqlite3.Row, item_id: str, storage_dir: Path | None
 ) -> bytes:
-    rows = db.execute("SELECT * FROM ciphertexts WHERE item_id = ?", (item_id,)).fetchall()
-    row = _pick_row(rows, cipher)
     data = (
         row["blob"] if row["path"] is None else (storage_dir / row["path"]).read_bytes()
     )
@@ -124,6 +118,28 @@ def load_plaintext(
         nonce_bytes=len(sealed.nonce or b""),
         legacy_rc4=row["cipher"] == "rc4" and not row["hmac_tag"],
     )
+    return plaintext
+
+
+def load_plaintext(
+    db: sqlite3.Connection,
+    item_id: str,
+    *,
+    storage_dir: Path | None = None,
+    cipher: str | None = None,
+) -> bytes:
+    """Baca item. Tanpa `cipher`, semua ciphertext didekripsi dan harus identik."""
+    rows = db.execute(
+        "SELECT ciphertexts.*, items.field FROM ciphertexts JOIN items ON items.id = ciphertexts.item_id WHERE item_id = ?",
+        (item_id,),
+    ).fetchall()
+    primary = _pick_row(rows, cipher)
+    if cipher is not None:
+        return _open_row(db, primary, item_id, storage_dir)
+    plaintext = _open_row(db, primary, item_id, storage_dir)
+    for row in rows:
+        if row is not primary and _open_row(db, row, item_id, storage_dir) != plaintext:
+            raise IntegrityError("Hasil dekripsi antar-cipher berbeda")
     return plaintext
 
 

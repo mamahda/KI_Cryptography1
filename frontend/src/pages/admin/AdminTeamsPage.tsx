@@ -1,9 +1,16 @@
 import { useQuery } from '@tanstack/react-query'
-import { AlertCircle, Inbox, Lock, PenLine, Users } from 'lucide-react'
+import { AlertCircle, Inbox, Lock, PenLine } from 'lucide-react'
 import { useState } from 'react'
 import { apiClient, isApiClientError, type TeamStatus } from '@/api'
 import { Pagination } from '@/components/ui/Pagination'
-import { CARD, TD, TH, WELL } from '@/components/ui/tokens'
+import {
+  CARD,
+  PAGE_TITLE,
+  SECTION_HEADING,
+  TD,
+  TH,
+  WELL,
+} from '@/components/ui/tokens'
 import { formatTimestamp } from '@/lib/datetime'
 
 const TEAM_STATUS_COPY: Record<TeamStatus, { label: string; className: string }> = {
@@ -29,25 +36,17 @@ export function AdminTeamsPage() {
 
   return (
     <div data-testid="admin-teams-page" className="space-y-6">
-      <header className={`${CARD} p-6`}>
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-[#243049] bg-[#0e1626] px-3 py-1 text-xs font-medium text-slate-300">
-          <Users className="h-3.5 w-3.5 text-slate-100" aria-hidden="true" />
-          Superadmin
-        </span>
-        <h1 className="mt-2.5 text-2xl font-bold tracking-tight text-white">Daftar Tim</h1>
-        <p className="mt-1.5 max-w-prose text-sm text-slate-400">
-          Seluruh tim yang terbentuk, baik yang masih draft maupun yang sudah mengunci
-          submission-nya.
-        </p>
+      <header>
+        <h1 className={PAGE_TITLE}>Daftar Tim</h1>
       </header>
 
       <section className={`${CARD} p-6`} aria-labelledby="admin-teams-heading">
-        <h2 id="admin-teams-heading" className="text-lg font-semibold text-white">
+        <h2 id="admin-teams-heading" className={SECTION_HEADING}>
           Tim terdaftar
         </h2>
 
         {teamsQuery.isPending ? (
-          <p data-testid="admin-teams-loading" className="mt-3 text-sm text-slate-400">
+          <p data-testid="admin-teams-loading" className="mt-3 text-sm text-ink-3">
             Memuat daftar tim...
           </p>
         ) : null}
@@ -72,8 +71,8 @@ export function AdminTeamsPage() {
             data-testid="admin-teams-empty-state"
             className={`mt-3 ${WELL} flex flex-col items-center gap-2 px-4 py-10 text-center`}
           >
-            <Inbox className="h-6 w-6 text-slate-400" aria-hidden="true" />
-            <p className="text-sm font-medium text-slate-200">Belum ada tim yang terbentuk</p>
+            <Inbox className="h-6 w-6 text-ink-3" aria-hidden="true" />
+            <p className="text-sm font-medium text-ink-2">Belum ada tim yang terbentuk</p>
           </div>
         ) : null}
 
@@ -85,7 +84,7 @@ export function AdminTeamsPage() {
                   Tim beserta status, ketua, jumlah anggota, dan waktu finalisasi
                 </caption>
                 <thead>
-                  <tr className="border-b border-[#243049]">
+                  <tr className="border-b border-edge">
                     <th scope="col" className={TH}>
                       Nama tim
                     </th>
@@ -111,9 +110,9 @@ export function AdminTeamsPage() {
                       <tr
                         key={team.id}
                         data-testid={`admin-team-row-${team.id}`}
-                        className="border-b border-[#1e293f] last:border-b-0"
+                        className="border-b border-edge-soft last:border-b-0"
                       >
-                        <td className={`${TD} font-medium text-slate-100`}>{team.name}</td>
+                        <td className={`${TD} font-medium text-ink`}>{team.name}</td>
                         <td className={TD}>
                           <span
                             className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium whitespace-nowrap ${status.className}`}

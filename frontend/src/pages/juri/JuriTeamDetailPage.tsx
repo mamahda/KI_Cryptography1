@@ -3,7 +3,13 @@ import { AlertCircle, ArrowLeft, Crown, ExternalLink, GitBranch } from 'lucide-r
 import { Link, useParams } from 'react-router-dom'
 import { apiClient, isApiClientError } from '@/api'
 import { ItemBlobViewer } from '@/components/ui/ItemBlobViewer'
-import { CARD, FOCUS, WELL } from '@/components/ui/tokens'
+import {
+  CARD,
+  FOCUS,
+  PAGE_TITLE,
+  SECTION_HEADING,
+  WELL,
+} from '@/components/ui/tokens'
 import { formatTimestamp } from '@/lib/datetime'
 
 export function JuriTeamDetailPage() {
@@ -21,14 +27,14 @@ export function JuriTeamDetailPage() {
     <div className="space-y-6">
       <Link
         to="/juri/teams"
-        className={`inline-flex items-center gap-1.5 text-sm font-medium text-slate-300 transition hover:text-white ${FOCUS}`}
+        className={`inline-flex items-center gap-1.5 text-sm font-medium text-ink-2 transition hover:text-white ${FOCUS}`}
       >
         <ArrowLeft className="h-4 w-4" aria-hidden="true" />
         Kembali ke daftar tim
       </Link>
 
       {detailQuery.isPending ? (
-        <p data-testid="juri-detail-loading" className={`${CARD} p-6 text-sm text-slate-400`}>
+        <p data-testid="juri-detail-loading" className={`${CARD} p-6 text-sm text-ink-3`}>
           Memuat berkas tim...
         </p>
       ) : null}
@@ -52,15 +58,15 @@ export function JuriTeamDetailPage() {
 
       {team ? (
         <div data-testid="juri-team-detail" className="space-y-6">
-          <header className={`${CARD} p-6`}>
-            <h1 className="text-2xl font-bold tracking-tight text-white">{team.name}</h1>
-            <p className="mt-1.5 text-sm text-slate-400">
+          <header>
+            <h1 className={PAGE_TITLE}>{team.name}</h1>
+            <p className="mt-1.5 text-sm text-ink-3">
               Dikunci final pada {formatTimestamp(team.finalized_at, 'long')}
             </p>
           </header>
 
           <section className={`${CARD} p-6`} aria-labelledby="juri-members-heading">
-            <h2 id="juri-members-heading" className="text-lg font-semibold text-white">
+            <h2 id="juri-members-heading" className={SECTION_HEADING}>
               Anggota tim
             </h2>
             <ul data-testid="juri-team-members" className="mt-3 space-y-2">
@@ -69,11 +75,11 @@ export function JuriTeamDetailPage() {
                   key={`${member.full_name ?? 'anggota'}-${index}`}
                   className={`${WELL} flex flex-wrap items-center justify-between gap-2 px-3 py-2.5`}
                 >
-                  <span className="text-sm font-medium text-slate-100">
+                  <span className="text-sm font-medium text-ink">
                     {member.full_name ?? '(nama belum diisi)'}
                   </span>
                   <span className="flex items-center gap-2">
-                    <span className="text-sm text-slate-400">
+                    <span className="text-sm text-ink-3">
                       {member.institution ?? '(institusi belum diisi)'}
                     </span>
                     {member.is_leader ? (
@@ -89,12 +95,9 @@ export function JuriTeamDetailPage() {
           </section>
 
           <section className={`${CARD} p-6`} aria-labelledby="juri-artifacts-heading">
-            <h2 id="juri-artifacts-heading" className="text-lg font-semibold text-white">
+            <h2 id="juri-artifacts-heading" className={SECTION_HEADING}>
               Berkas submission
             </h2>
-            <p className="mt-1 text-sm text-slate-400">
-              Setiap berkas didekripsi dan diverifikasi oleh server sebelum ditampilkan.
-            </p>
 
             <div className="mt-3 space-y-4">
               <ItemBlobViewer
@@ -111,8 +114,8 @@ export function JuriTeamDetailPage() {
               />
 
               <article data-testid="artifact-repo" className={`${WELL} p-4`}>
-                <h3 className="flex items-center gap-1.5 text-sm font-semibold text-slate-100">
-                  <GitBranch className="h-4 w-4 text-slate-400" aria-hidden="true" />
+                <h3 className="flex items-center gap-1.5 text-sm font-semibold text-ink">
+                  <GitBranch className="h-4 w-4 text-ink-3" aria-hidden="true" />
                   Repository GitHub
                 </h3>
                 {team.repo_url ? (
@@ -121,14 +124,14 @@ export function JuriTeamDetailPage() {
                     href={team.repo_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className={`mt-1 inline-flex items-center gap-1.5 text-sm break-all text-slate-200 underline decoration-slate-500 underline-offset-4 transition hover:text-white hover:decoration-cyan-300 ${FOCUS}`}
+                    className={`mt-1 inline-flex items-center gap-1.5 text-sm break-all text-ink-2 underline decoration-ink-3 underline-offset-4 transition hover:text-white hover:decoration-sky ${FOCUS}`}
                   >
                     {team.repo_url}
                     <ExternalLink className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
                     <span className="sr-only">(terbuka di tab baru)</span>
                   </a>
                 ) : (
-                  <p className="mt-1 text-sm text-slate-400">Tidak ada repository yang disubmit.</p>
+                  <p className="mt-1 text-sm text-ink-3">Tidak ada repository yang disubmit.</p>
                 )}
               </article>
             </div>

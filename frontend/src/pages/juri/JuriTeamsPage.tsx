@@ -1,8 +1,15 @@
 import { useQuery } from '@tanstack/react-query'
-import { AlertCircle, ChevronRight, Gavel, Inbox } from 'lucide-react'
+import { AlertCircle, ChevronRight, Inbox } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { apiClient, isApiClientError } from '@/api'
-import { CARD, TD, TH, WELL } from '@/components/ui/tokens'
+import {
+  CARD,
+  PAGE_TITLE,
+  SECTION_HEADING,
+  TD,
+  TH,
+  WELL,
+} from '@/components/ui/tokens'
 import { formatTimestamp } from '@/lib/datetime'
 
 export function JuriTeamsPage() {
@@ -15,25 +22,17 @@ export function JuriTeamsPage() {
 
   return (
     <div data-testid="juri-teams-page" className="space-y-6">
-      <header className={`${CARD} p-6`}>
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-[#243049] bg-[#0e1626] px-3 py-1 text-xs font-medium text-slate-300">
-          <Gavel className="h-3.5 w-3.5 text-slate-100" aria-hidden="true" />
-          Portal Juri
-        </span>
-        <h1 className="mt-2.5 text-2xl font-bold tracking-tight text-white">Tim Final</h1>
-        <p className="mt-1.5 max-w-prose text-sm text-slate-400">
-          Hanya tim yang sudah mengunci submission (status <strong>final</strong>) yang muncul di
-          sini. Membuka berkas sebuah tim akan dicatat pada audit log.
-        </p>
+      <header>
+        <h1 className={PAGE_TITLE}>Tim Final</h1>
       </header>
 
       <section className={`${CARD} p-6`} aria-labelledby="juri-teams-heading">
-        <h2 id="juri-teams-heading" className="text-lg font-semibold text-white">
+        <h2 id="juri-teams-heading" className={SECTION_HEADING}>
           Daftar tim
         </h2>
 
         {teamsQuery.isPending ? (
-          <p data-testid="juri-teams-loading" className="mt-3 text-sm text-slate-400">
+          <p data-testid="juri-teams-loading" className="mt-3 text-sm text-ink-3">
             Memuat daftar tim final...
           </p>
         ) : null}
@@ -58,9 +57,9 @@ export function JuriTeamsPage() {
             data-testid="juri-teams-empty-state"
             className={`mt-3 ${WELL} flex flex-col items-center gap-2 px-4 py-10 text-center`}
           >
-            <Inbox className="h-6 w-6 text-slate-400" aria-hidden="true" />
-            <p className="text-sm font-medium text-slate-200">Belum ada tim yang submit final</p>
-            <p className="max-w-sm text-sm text-slate-400">
+            <Inbox className="h-6 w-6 text-ink-3" aria-hidden="true" />
+            <p className="text-sm font-medium text-ink-2">Belum ada tim yang submit final</p>
+            <p className="max-w-sm text-sm text-ink-3">
               Daftar ini terisi setelah peserta mengunci proposal, video, dan repository mereka.
             </p>
           </div>
@@ -73,7 +72,7 @@ export function JuriTeamsPage() {
                 Tim yang sudah submit final, beserta jumlah anggota dan waktu finalisasi
               </caption>
               <thead>
-                <tr className="border-b border-[#243049]">
+                <tr className="border-b border-edge">
                   <th scope="col" className={TH}>
                     Nama tim
                   </th>
@@ -90,15 +89,15 @@ export function JuriTeamsPage() {
                   <tr
                     key={team.id}
                     data-testid={`juri-team-row-${team.id}`}
-                    className="border-b border-[#1e293f] last:border-b-0"
+                    className="border-b border-edge-soft last:border-b-0"
                   >
-                    <td className={`${TD} font-medium text-slate-100`}>
+                    <td className={`${TD} font-medium text-ink`}>
                       <Link
                         to={`/juri/teams/${team.id}`}
-                        className="inline-flex items-center gap-1.5 rounded transition hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300"
+                        className="inline-flex items-center gap-1.5 rounded transition hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky"
                       >
                         {team.name}
-                        <ChevronRight className="h-4 w-4 text-slate-400" aria-hidden="true" />
+                        <ChevronRight className="h-4 w-4 text-ink-3" aria-hidden="true" />
                       </Link>
                     </td>
                     <td className={`${TD} tabular-nums`}>{team.member_count}</td>
