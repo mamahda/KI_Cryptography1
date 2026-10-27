@@ -17,13 +17,22 @@ import {
   RoleGuard,
 } from './components/guards/RouteGuards'
 import { env } from './config/env'
+import { AdminAuditLogsPage } from './pages/admin/AdminAuditLogsPage'
+import { AdminJuriPage } from './pages/admin/AdminJuriPage'
+import { AdminParticipantDetailPage } from './pages/admin/AdminParticipantDetailPage'
+import { AdminParticipantsPage } from './pages/admin/AdminParticipantsPage'
+import { AdminSettingsPage } from './pages/admin/AdminSettingsPage'
+import { AdminTeamsPage } from './pages/admin/AdminTeamsPage'
 import { BenchmarksPage } from './pages/admin/BenchmarksPage'
+import { JuriTeamDetailPage } from './pages/juri/JuriTeamDetailPage'
+import { JuriTeamsPage } from './pages/juri/JuriTeamsPage'
 import { ConsentPage } from './pages/auth/ConsentPage'
 import { LoginPage } from './pages/auth/LoginPage'
 import { RegisterPage } from './pages/auth/RegisterPage'
 import { DocumentManagerPage } from './pages/participant/DocumentManagerPage'
 import { ParticipantDashboardPage } from './pages/participant/ParticipantDashboardPage'
 import { ProfilePage } from './pages/participant/ProfilePage'
+import { EncryptionInspectorPage } from './pages/participant/EncryptionInspectorPage'
 import { TeamWorkspacePage } from './pages/participant/TeamWorkspacePage'
 import { VideoUploadPage } from './pages/participant/VideoUploadPage'
 import { useAuthStore } from './stores/authStore'
@@ -282,15 +291,6 @@ function WorkspaceHome() {
   )
 }
 
-function RoutePlaceholder({ title, description }: { title: string; description: string }) {
-  return (
-    <section className="rounded-xl border border-[#222] bg-[#121212] p-6 shadow-[0_10px_40px_rgba(0,0,0,0.8)]">
-      <h1 className="text-xl font-semibold text-white">{title}</h1>
-      <p className="mt-2 text-sm text-zinc-400">{description}</p>
-    </section>
-  )
-}
-
 export function AppRoutes() {
   return (
     <Routes>
@@ -325,96 +325,27 @@ export function AppRoutes() {
           {/* Shared Encryption Inspector (all authenticated roles; peserta gated by ConsentGuard) */}
           <Route element={<RoleGuard allowedRoles={['peserta', 'juri', 'superadmin']} />}>
             <Route element={<ConsentGuard />}>
-              <Route
-                path="/encryption-inspector"
-                element={
-                  <RoutePlaceholder
-                    title="Encryption & Integrity Inspector"
-                    description="Triple-cipher metadata, live server verification, and SHA-256 checksum (Phase 4)."
-                  />
-                }
-              />
+              <Route path="/encryption-inspector" element={<EncryptionInspectorPage />} />
             </Route>
           </Route>
 
           {/* Juri routes */}
           <Route element={<RoleGuard allowedRoles={['juri']} />}>
-            <Route
-              path="/juri/teams"
-              element={
-                <RoutePlaceholder
-                  title="Juri — Finalized Teams"
-                  description="Judge portal listing finalized hackathon teams (Phase 4)."
-                />
-              }
-            />
-            <Route
-              path="/juri/teams/:teamId"
-              element={
-                <RoutePlaceholder
-                  title="Juri — Team Submission Detail"
-                  description="Judge artifact inspection for proposal, video, and GitHub link (Phase 4)."
-                />
-              }
-            />
+            <Route path="/juri/teams" element={<JuriTeamsPage />} />
+            <Route path="/juri/teams/:teamId" element={<JuriTeamDetailPage />} />
           </Route>
 
           {/* Superadmin routes */}
           <Route element={<RoleGuard allowedRoles={['superadmin']} />}>
-            <Route
-              path="/admin/participants"
-              element={
-                <RoutePlaceholder
-                  title="Superadmin — Participant Verification"
-                  description="Participant verification queue and minor review (Phase 4)."
-                />
-              }
-            />
+            <Route path="/admin/participants" element={<AdminParticipantsPage />} />
             <Route
               path="/admin/participants/:userId"
-              element={
-                <RoutePlaceholder
-                  title="Superadmin — Participant Detail"
-                  description="Inspect participant profile & documents and approve/reject (Phase 4)."
-                />
-              }
+              element={<AdminParticipantDetailPage />}
             />
-            <Route
-              path="/admin/teams"
-              element={
-                <RoutePlaceholder
-                  title="Superadmin — Teams Overview"
-                  description="Paginated overview of all registered teams (Phase 4)."
-                />
-              }
-            />
-            <Route
-              path="/admin/juri"
-              element={
-                <RoutePlaceholder
-                  title="Superadmin — Juri Accounts"
-                  description="List and provision judge accounts (Phase 4)."
-                />
-              }
-            />
-            <Route
-              path="/admin/settings"
-              element={
-                <RoutePlaceholder
-                  title="Superadmin — Competition Settings"
-                  description="Manage deadlines and team size limits (Phase 4)."
-                />
-              }
-            />
-            <Route
-              path="/admin/audit-logs"
-              element={
-                <RoutePlaceholder
-                  title="Superadmin — Security Audit Logs"
-                  description="Filterable access, verification, and integrity_failure audit trail (Phase 4)."
-                />
-              }
-            />
+            <Route path="/admin/teams" element={<AdminTeamsPage />} />
+            <Route path="/admin/juri" element={<AdminJuriPage />} />
+            <Route path="/admin/settings" element={<AdminSettingsPage />} />
+            <Route path="/admin/audit-logs" element={<AdminAuditLogsPage />} />
             <Route path="/admin/benchmarks" element={<BenchmarksPage />} />
           </Route>
         </Route>
