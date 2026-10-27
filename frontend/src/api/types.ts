@@ -549,9 +549,23 @@ export type AdminAuditLogsResponse = PaginatedResponse<AuditLogItem>
 export interface AdminBenchmarksQueryParams {
   source?: BenchmarkSource
   operation?: BenchmarkOperation
+  /** Run on the selected source; the newest run is returned when omitted. */
   run_id?: string
 }
 
+export interface BenchmarkCipherParameters {
+  key_bits: number
+  nonce_bytes: number
+  hmac: boolean
+  /** RC4 only: leading keystream bytes discarded. */
+  drop_bytes?: number
+}
+
+/**
+ * Measurement environment of a single run. Runs recorded outside the CLI may be
+ * missing part of this metadata, so everything past the first four keys is
+ * optional. `aes_ni` is `null` when CPU support could not be detected.
+ */
 export interface BenchmarkEnv {
   cpu: string
   aes_ni: boolean | null
@@ -559,15 +573,19 @@ export interface BenchmarkEnv {
   pycryptodome: string
   os?: string
   protocol?: string
+  /** Parameter profile per cipher, as recorded by the backend. */
+  parameters?: Record<string, BenchmarkCipherParameters>
+  /** Controlled runs only. */
   repeats?: number
   warmup?: number
   sizes_bytes?: number[]
-  parameters?: Record<CipherType, {
-    key_bits: number
-    nonce_bytes: number
-    hmac: boolean
-    drop_bytes?: number
-  }>
+}
+
+export interface BenchmarkRunSummary {
+  run_id: string
+  created_at: string
+  /** Total samples across every operation, size and cipher of the run. */
+  sample_count: number
 }
 
 export interface BenchmarkRow {
@@ -578,24 +596,20 @@ export interface BenchmarkRow {
   median_ns: number
   q1_ns: number
   q3_ns: number
+  /** Null where throughput is meaningless, as for `wrap`. 1 MB = 1_000_000 B. */
   median_mb_s: number | null
   q1_mb_s: number | null
   q3_mb_s: number | null
+  /** False when `n < 30`: the quartiles carry no statistical confidence. */
   sufficient_samples: boolean
-}
-
-export interface BenchmarkRun {
-  run_id: string
-  created_at: string
-  sample_count: number
 }
 
 export interface AdminBenchmarksResponse {
   run_id: string | null
   source: BenchmarkSource
   env: BenchmarkEnv | null
+  runs: BenchmarkRunSummary[]
   rows: BenchmarkRow[]
-  runs: BenchmarkRun[]
 }
 
 /* -------------------------------------------------------------------------- */

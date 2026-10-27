@@ -7,6 +7,12 @@ import {
   type AdminTeamListItem,
   type AuditAction,
   type AuditLogItem,
+  type AdminBenchmarksResponse,
+  type BenchmarkEnv,
+  type BenchmarkOperation,
+  type BenchmarkRow,
+  type BenchmarkSource,
+  type CipherType,
   type ConsentInfo,
   type DocumentType,
   type FinalizeMissingItem,
@@ -1035,6 +1041,162 @@ function issueSessionForEmail(email: string): { user: Me; csrfCookieHeader: stri
 }
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+/* -------------------------------------------------------------------------- */
+/* Benchmark fixtures                                                         */
+/* -------------------------------------------------------------------------- */
+
+const BENCHMARK_SOURCE_VALUES: BenchmarkSource[] = ['controlled', 'live']
+const BENCHMARK_OPERATION_VALUES: BenchmarkOperation[] = ['enc', 'dec', 'hmac', 'wrap']
+
+interface MockBenchmarkRun {
+  run_id: string
+  source: BenchmarkSource
+  created_at: string
+  env: BenchmarkEnv
+  rows: BenchmarkRow[]
+}
+
+/**
+ * Builds a row the way the API does: durations come from the throughput, and
+ * the throughput quartiles are their own spread rather than inverted duration
+ * quartiles. `mbPerSecond` is null where throughput is meaningless (`wrap`),
+ * and then the duration is a fixed cost independent of payload size.
+ */
+function benchmarkRow(
+  cipher: CipherType,
+  operation: BenchmarkOperation,
+  sizeBytes: number,
+  mbPerSecond: number | null,
+  n = 30,
+  fixedNs = 9_400,
+): BenchmarkRow {
+  const medianNs = mbPerSecond === null ? fixedNs : Math.round((sizeBytes * 1_000) / mbPerSecond)
+  return {
+    cipher,
+    operation,
+    size_bytes: sizeBytes,
+    n,
+    median_ns: medianNs,
+    q1_ns: Math.round(medianNs * 0.97),
+    q3_ns: Math.round(medianNs * 1.05),
+    median_mb_s: mbPerSecond,
+    q1_mb_s: mbPerSecond === null ? null : Number((mbPerSecond * 0.96).toFixed(1)),
+    q3_mb_s: mbPerSecond === null ? null : Number((mbPerSecond * 1.03).toFixed(1)),
+    sufficient_samples: n >= 30,
+  }
+}
+
+/**
+ * Throughput at the largest payload, where the timer overhead no longer
+ * dominates. Smaller payloads reach a fraction of it.
+ */
+const CONTROLLED_PEAK_MB_S: Record<CipherType, { enc: number; dec: number; hmac: number }> = {
+  aes: { enc: 826.4, dec: 816.9, hmac: 438.6 },
+  des: { enc: 54.1, dec: 53.7, hmac: 438.6 },
+  rc4: { enc: 267.4, dec: 264.6, hmac: 438.6 },
+}
+
+const CONTROLLED_SIZES = [524_288, 2_097_152, 5_242_880]
+const SIZE_EFFICIENCY: Record<number, number> = {
+  524_288: 0.72,
+  2_097_152: 0.91,
+  5_242_880: 1,
+}
+
+function controlledRows(): BenchmarkRow[] {
+  const rows: BenchmarkRow[] = []
+  for (const size of CONTROLLED_SIZES) {
+    const efficiency = SIZE_EFFICIENCY[size] ?? 1
+    for (const cipher of ['aes', 'des', 'rc4'] as CipherType[]) {
+      const peak = CONTROLLED_PEAK_MB_S[cipher]
+      const scale = (value: number) =>
+        size === 5_242_880 ? value : Number((value * efficiency).toFixed(1))
+      rows.push(benchmarkRow(cipher, 'enc', size, scale(peak.enc)))
+      rows.push(benchmarkRow(cipher, 'dec', size, scale(peak.dec)))
+      // One tag per ciphertext on encrypt and one verification on decrypt.
+      rows.push(benchmarkRow(cipher, 'hmac', size, scale(peak.hmac), 60))
+      // Key wrapping is a fixed cost: no meaningful data throughput.
+      rows.push(benchmarkRow(cipher, 'wrap', size, null))
+    }
+  }
+  return rows
+}
+
+const MOCK_BENCHMARK_RUNS: MockBenchmarkRun[] = [
+  {
+    run_id: 'run-controlled-2026-10-26',
+    source: 'controlled',
+    created_at: '2026-10-26T20:15:00+07:00',
+    env: {
+      cpu: 'Mock CPU (AES-NI Enabled)',
+      aes_ni: true,
+      python: '3.12.4',
+      pycryptodome: '3.21.0',
+      os: 'Windows 11 (10.0.26200)',
+      protocol: 'time.perf_counter_ns(), cipher digilir per pengulangan',
+      parameters: {
+        aes: { key_bits: 256, nonce_bytes: 8, hmac: true },
+        des: { key_bits: 56, nonce_bytes: 4, hmac: true },
+        rc4: { key_bits: 128, nonce_bytes: 0, hmac: true, drop_bytes: 3072 },
+      },
+      repeats: 30,
+      warmup: 3,
+      sizes_bytes: CONTROLLED_SIZES,
+    },
+    rows: controlledRows(),
+  },
+  {
+    run_id: 'run-controlled-2026-10-19',
+    source: 'controlled',
+    created_at: '2026-10-19T21:40:00+07:00',
+    env: {
+      cpu: 'Mock CPU (AES-NI Enabled)',
+      aes_ni: true,
+      python: '3.12.4',
+      pycryptodome: '3.20.0',
+      os: 'Windows 11 (10.0.26100)',
+      protocol: 'time.perf_counter_ns(), cipher digilir per pengulangan',
+      repeats: 30,
+      warmup: 3,
+      sizes_bytes: [5_242_880],
+    },
+    rows: [
+      benchmarkRow('aes', 'enc', 5_242_880, 790.2),
+      benchmarkRow('des', 'enc', 5_242_880, 52.8),
+      benchmarkRow('rc4', 'enc', 5_242_880, 255.1),
+      benchmarkRow('aes', 'hmac', 5_242_880, 430.5, 60),
+    ],
+  },
+  {
+    run_id: 'run-live-2026-10-27',
+    source: 'live',
+    created_at: '2026-10-27T08:05:00+07:00',
+    env: {
+      cpu: 'Mock CPU (AES-NI Enabled)',
+      aes_ni: null,
+      python: '3.12.4',
+      pycryptodome: '3.21.0',
+      os: 'Windows 11 (10.0.26200)',
+      protocol: 'Sampel dari alur simpan/baca item yang benar-benar dijalankan',
+      parameters: {
+        aes: { key_bits: 256, nonce_bytes: 8, hmac: true },
+        des: { key_bits: 56, nonce_bytes: 4, hmac: true },
+        rc4: { key_bits: 128, nonce_bytes: 0, hmac: true, drop_bytes: 3072 },
+      },
+    },
+    // Live sampling follows real traffic, so the sample counts differ per
+    // cipher and some points have not reached 30 samples yet.
+    rows: [
+      benchmarkRow('aes', 'enc', 2_097_152, 804.3, 42),
+      benchmarkRow('des', 'enc', 2_097_152, 53.2, 31),
+      benchmarkRow('rc4', 'enc', 2_097_152, 262.5, 30),
+      benchmarkRow('aes', 'dec', 2_097_152, 798.1, 12),
+      benchmarkRow('aes', 'hmac', 2_097_152, 433.9, 54),
+      benchmarkRow('aes', 'wrap', 2_097_152, null, 42),
+    ],
+  },
+]
 
 export const handlers = [
   http.get('*/api/settings', () => {
@@ -2713,17 +2875,53 @@ export const handlers = [
     }
 
     const url = new URL(request.url)
-    const source = url.searchParams.get('source') === 'live' ? 'live' : 'controlled'
+    const operation = url.searchParams.get('operation')
+    const source = (url.searchParams.get('source') ?? 'controlled') as BenchmarkSource
+    const requestedRunId = url.searchParams.get('run_id')
 
-    return HttpResponse.json(
-      {
-        run_id: null,
-        source,
-        runs: [],
-        env: null,
-        rows: [],
-      },
-      { status: 200 },
-    )
+    if (!BENCHMARK_SOURCE_VALUES.includes(source)) {
+      return HttpResponse.json(
+        { error: { code: 'validation_error', message: 'Nilai query source tidak valid.' } },
+        { status: 400 },
+      )
+    }
+    if (operation && !BENCHMARK_OPERATION_VALUES.includes(operation as BenchmarkOperation)) {
+      return HttpResponse.json(
+        { error: { code: 'validation_error', message: 'Nilai query operation tidak valid.' } },
+        { status: 400 },
+      )
+    }
+
+    // Newest first, matching the API's own ordering.
+    const runs = MOCK_BENCHMARK_RUNS.filter((run) => run.source === source)
+    const selected = requestedRunId
+      ? runs.find((run) => run.run_id === requestedRunId)
+      : runs[0]
+
+    if (requestedRunId && !selected) {
+      return HttpResponse.json(
+        {
+          error: {
+            code: 'not_found',
+            message: 'Run benchmark tidak ditemukan pada source ini.',
+          },
+        },
+        { status: 404 },
+      )
+    }
+
+    const body: AdminBenchmarksResponse = {
+      run_id: selected?.run_id ?? null,
+      source,
+      env: selected?.env ?? null,
+      runs: runs.map((run) => ({
+        run_id: run.run_id,
+        created_at: run.created_at,
+        sample_count: run.rows.reduce((total, row) => total + row.n, 0),
+      })),
+      rows: (selected?.rows ?? []).filter((row) => !operation || row.operation === operation),
+    }
+
+    return HttpResponse.json(body, { status: 200 })
   }),
 ]
