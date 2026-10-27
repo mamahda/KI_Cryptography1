@@ -6,8 +6,10 @@ import { useAuthStore } from './stores/authStore'
 import { useUiStore } from './stores/uiStore'
 import { renderWithProviders } from './test/test-utils'
 
-describe('Phase 0 Workspace Scaffolding', () => {
+describe('Application Shell & Core Routing', () => {
   it('fetches competition settings via TanStack Query + MSW and renders limits', async () => {
+    useAuthStore.getState().clearSession()
+
     renderWithProviders(<AppRoutes />, {
       routerProps: { initialEntries: ['/'] },
     })
@@ -25,8 +27,19 @@ describe('Phase 0 Workspace Scaffolding', () => {
     expect(screen.getByText('100 MB')).toBeInTheDocument()
   })
 
-  it('navigates across core routes and renders Anggota D benchmark route boundary', async () => {
+  it('navigates across superadmin routes and renders Anggota D benchmark route boundary', async () => {
     const user = userEvent.setup()
+    useAuthStore.getState().setSessionUser({
+      id: 'a0000000-0000-4000-8000-000000000001',
+      email: 'admin@panitia.id',
+      role: 'superadmin',
+      full_name: null,
+      verification_status: null,
+      consent: null,
+      current_policy_version: '1.0',
+      team: null,
+    })
+
     renderWithProviders(<AppRoutes />, {
       routerProps: { initialEntries: ['/admin/benchmarks'] },
     })
@@ -48,6 +61,12 @@ describe('Phase 0 Workspace Scaffolding', () => {
       role: 'peserta',
       full_name: 'Budi Santoso',
       verification_status: 'menunggu',
+      consent: {
+        policy_version: '1.0',
+        agreed_at: '2026-10-26T09:00:00+07:00',
+      },
+      current_policy_version: '1.0',
+      team: null,
     })
     useUiStore.getState().pushNotice({
       variant: 'info',
