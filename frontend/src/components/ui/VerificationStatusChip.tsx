@@ -11,7 +11,7 @@ const STATUS_COPY: Record<
 > = {
   belum_lengkap: {
     label: 'Belum lengkap',
-    className: 'border-[#333] bg-black text-zinc-300',
+    className: 'border-[#243049] bg-[#0e1626] text-slate-300',
     Icon: FileWarning,
   },
   menunggu: {

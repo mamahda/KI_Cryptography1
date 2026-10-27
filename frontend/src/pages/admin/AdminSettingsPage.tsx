@@ -108,14 +108,14 @@ export function AdminSettingsPage() {
   return (
     <div data-testid="admin-settings-page" className="space-y-6">
       <header className={`${CARD} p-6`}>
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-[#333] bg-black px-3 py-1 text-xs font-medium text-zinc-300">
-          <SlidersHorizontal className="h-3.5 w-3.5 text-zinc-100" aria-hidden="true" />
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-[#243049] bg-[#0e1626] px-3 py-1 text-xs font-medium text-slate-300">
+          <SlidersHorizontal className="h-3.5 w-3.5 text-slate-100" aria-hidden="true" />
           Superadmin
         </span>
         <h1 className="mt-2.5 text-2xl font-bold tracking-tight text-white">
           Pengaturan Kompetisi
         </h1>
-        <p className="mt-1.5 max-w-prose text-sm text-zinc-400">
+        <p className="mt-1.5 max-w-prose text-sm text-slate-400">
           Tenggat dan ukuran tim berlaku langsung untuk semua peserta. Setiap perubahan dicatat di
           audit log.
         </p>
@@ -127,7 +127,7 @@ export function AdminSettingsPage() {
         </h2>
 
         {settingsQuery.isPending ? (
-          <p data-testid="settings-loading" className="mt-3 text-sm text-zinc-400">
+          <p data-testid="settings-loading" className="mt-3 text-sm text-slate-400">
             Memuat pengaturan...
           </p>
         ) : null}
@@ -136,7 +136,7 @@ export function AdminSettingsPage() {
           <p
             data-testid="settings-load-error"
             role="alert"
-            className="mt-3 flex items-start gap-2 rounded-md border border-red-500/40 bg-red-950/30 px-3 py-2.5 text-sm text-red-200"
+            className="mt-3 flex items-start gap-2 rounded-xl border border-red-500/40 bg-red-950/30 px-3 py-2.5 text-sm text-red-200"
           >
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
             <span>Gagal memuat pengaturan saat ini.</span>
@@ -213,7 +213,7 @@ export function AdminSettingsPage() {
               </div>
             </div>
 
-            <p className={`${WELL} px-3 py-2.5 text-xs text-zinc-400`}>
+            <p className={`${WELL} px-3 py-2.5 text-xs text-slate-400`}>
               Tenggat memakai format ISO 8601 lengkap dengan offset zona waktu, sehingga tidak ada
               penafsiran ganda antara server dan browser peserta.
             </p>
@@ -232,7 +232,7 @@ export function AdminSettingsPage() {
               <p
                 data-testid="settings-success"
                 role="status"
-                className="flex items-start gap-2 rounded-md border border-emerald-500/30 bg-emerald-950/30 px-3 py-2.5 text-sm text-emerald-200"
+                className="flex items-start gap-2 rounded-xl border border-emerald-500/30 bg-emerald-950/30 px-3 py-2.5 text-sm text-emerald-200"
               >
                 <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
                 Pengaturan berhasil disimpan.
@@ -243,7 +243,7 @@ export function AdminSettingsPage() {
               <p
                 data-testid="settings-error"
                 role="alert"
-                className="flex items-start gap-2 rounded-md border border-red-500/40 bg-red-950/30 px-3 py-2.5 text-sm text-red-200"
+                className="flex items-start gap-2 rounded-xl border border-red-500/40 bg-red-950/30 px-3 py-2.5 text-sm text-red-200"
               >
                 <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
                 <span>{shownError}</span>

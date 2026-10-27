@@ -24,8 +24,8 @@ import { VerificationStatusChip } from '@/components/ui/VerificationStatusChip'
 function ProfileField({ label, value }: { label: string; value: string | null }) {
   return (
     <div className={`${RECESSED} px-3 py-2`}>
-      <dt className="text-xs text-zinc-400">{label}</dt>
-      <dd className="mt-0.5 text-sm break-words text-zinc-200">{value ?? '—'}</dd>
+      <dt className="text-xs text-slate-400">{label}</dt>
+      <dd className="mt-0.5 text-sm break-words text-slate-200">{value ?? '—'}</dd>
     </div>
   )
 }
@@ -104,14 +104,14 @@ export function AdminParticipantDetailPage() {
     <div className="space-y-6">
       <Link
         to="/admin/participants"
-        className={`inline-flex items-center gap-1.5 text-sm font-medium text-zinc-300 transition hover:text-white ${FOCUS}`}
+        className={`inline-flex items-center gap-1.5 text-sm font-medium text-slate-300 transition hover:text-white ${FOCUS}`}
       >
         <ArrowLeft className="h-4 w-4" aria-hidden="true" />
         Kembali ke antrean verifikasi
       </Link>
 
       {detailQuery.isPending ? (
-        <p data-testid="participant-detail-loading" className={`${CARD} p-6 text-sm text-zinc-400`}>
+        <p data-testid="participant-detail-loading" className={`${CARD} p-6 text-sm text-slate-400`}>
           Memuat profil peserta...
         </p>
       ) : null}
@@ -141,7 +141,7 @@ export function AdminParticipantDetailPage() {
                 <h1 className="text-2xl font-bold tracking-tight text-white">
                   {detail.profile.full_name ?? '(nama belum diisi)'}
                 </h1>
-                <p className="mt-1 text-sm break-all text-zinc-400">{detail.email}</p>
+                <p className="mt-1 text-sm break-all text-slate-400">{detail.email}</p>
               </div>
               <VerificationStatusChip
                 status={detail.verification_status}
@@ -152,7 +152,7 @@ export function AdminParticipantDetailPage() {
             {detail.profile.is_minor ? (
               <p
                 data-testid="is-minor-badge"
-                className="mt-3 flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-950/30 px-3 py-2.5 text-sm text-amber-200"
+                className="mt-3 flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-950/30 px-3 py-2.5 text-sm text-amber-200"
               >
                 <BadgeAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
                 <span>
@@ -165,9 +165,9 @@ export function AdminParticipantDetailPage() {
             {detail.verification_note ? (
               <p
                 data-testid="existing-note"
-                className={`mt-3 ${WELL} px-3 py-2.5 text-sm text-zinc-300`}
+                className={`mt-3 ${WELL} px-3 py-2.5 text-sm text-slate-300`}
               >
-                <span className="block text-xs text-zinc-400">Catatan panitia tersimpan</span>
+                <span className="block text-xs text-slate-400">Catatan panitia tersimpan</span>
                 {detail.verification_note}
               </p>
             ) : null}
@@ -206,7 +206,7 @@ export function AdminParticipantDetailPage() {
             <h2 id="documents-heading" className="text-lg font-semibold text-white">
               Dokumen identitas
             </h2>
-            <p className="mt-1 text-sm text-zinc-400">
+            <p className="mt-1 text-sm text-slate-400">
               Setiap dokumen didekripsi dan diverifikasi oleh server sebelum ditampilkan, dan
               pembukaannya tercatat di audit log.
             </p>
@@ -225,7 +225,7 @@ export function AdminParticipantDetailPage() {
             <div className="mt-3">
               <label htmlFor="note-input" className={LABEL}>
                 Catatan panitia
-                <span className="ml-1 font-normal text-zinc-400">
+                <span className="ml-1 font-normal text-slate-400">
                   (wajib saat menolak, opsional saat menyetujui)
                 </span>
               </label>
@@ -283,7 +283,7 @@ export function AdminParticipantDetailPage() {
               <p
                 data-testid="verify-success"
                 role="status"
-                className="mt-3 flex items-start gap-2 rounded-md border border-emerald-500/30 bg-emerald-950/30 px-3 py-2.5 text-sm text-emerald-200"
+                className="mt-3 flex items-start gap-2 rounded-xl border border-emerald-500/30 bg-emerald-950/30 px-3 py-2.5 text-sm text-emerald-200"
               >
                 <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
                 {successMessage}
@@ -294,7 +294,7 @@ export function AdminParticipantDetailPage() {
               <p
                 data-testid="verify-error"
                 role="alert"
-                className="mt-3 flex items-start gap-2 rounded-md border border-red-500/40 bg-red-950/30 px-3 py-2.5 text-sm text-red-200"
+                className="mt-3 flex items-start gap-2 rounded-xl border border-red-500/40 bg-red-950/30 px-3 py-2.5 text-sm text-red-200"
               >
                 <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
                 <span>

@@ -381,8 +381,8 @@ export default function ModernLoginSignup({
   }
 
   const BrandLogo = (
-    <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-full border border-[#333] bg-[#111] text-white shadow-inner">
-      <ShieldCheck className="h-5 w-5 text-zinc-100" aria-hidden="true" />
+    <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-full border border-[#243049] bg-[#0e1626] text-white shadow-inner">
+      <ShieldCheck className="h-5 w-5 text-slate-100" aria-hidden="true" />
     </div>
   )
 
@@ -390,7 +390,7 @@ export default function ModernLoginSignup({
     <div
       ref={containerRef}
       className={cn(
-        'relative flex min-h-[calc(100vh-3.5rem)] w-full items-center justify-center overflow-hidden bg-black px-4 py-10 text-white',
+        'relative flex min-h-[calc(100vh-3.5rem)] w-full items-center justify-center overflow-hidden bg-[#0e1626] px-4 py-10 text-white',
         className,
       )}
     >
@@ -418,7 +418,7 @@ export default function ModernLoginSignup({
       />
 
       {/* Auth Modal Card */}
-      <section className="relative z-2 flex w-full max-w-[420px] flex-col items-center rounded-xl border border-[#222] bg-[#121212] p-7 shadow-[0_10px_40px_rgba(0,0,0,0.85)] sm:p-8">
+      <section className="relative z-2 flex w-full max-w-[420px] flex-col items-center rounded-2xl border border-[#243049] bg-[#141d2e] p-7 shadow-[0_10px_40px_rgba(0,0,0,0.85)] sm:p-8">
         {isLogin ? (
           <div className="flex w-full max-w-[360px] flex-col items-center text-center">
             {BrandLogo}
@@ -433,7 +433,7 @@ export default function ModernLoginSignup({
               <div
                 role="alert"
                 data-testid="login-error-alert"
-                className="mb-3.5 flex w-full items-start gap-2 rounded-md border border-rose-500/40 bg-rose-950/50 px-3 py-2.5 text-left text-xs text-rose-200"
+                className="mb-3.5 flex w-full items-start gap-2 rounded-xl border border-rose-500/40 bg-rose-950/50 px-3 py-2.5 text-left text-xs text-rose-200"
               >
                 <AlertCircle
                   className="mt-0.5 h-4 w-4 shrink-0 text-rose-400"
@@ -451,7 +451,7 @@ export default function ModernLoginSignup({
               <div>
                 <label
                   htmlFor="login-email"
-                  className="mb-1 block text-xs font-medium text-zinc-300"
+                  className="mb-1 block text-xs font-medium text-slate-300"
                 >
                   Email
                 </label>
@@ -464,7 +464,7 @@ export default function ModernLoginSignup({
                   onChange={(e) => setEmail(e.target.value)}
                   aria-invalid={Boolean(fieldErrors.email)}
                   placeholder="nama@mahasiswa.ac.id"
-                  className="w-full rounded-md border border-[#333] bg-black px-3.5 py-2.5 text-sm text-white placeholder:text-zinc-500 focus:border-zinc-400 focus:outline-none"
+                  className="w-full rounded-xl border border-[#243049] bg-[#0e1626] px-3.5 py-2.5 text-sm text-white placeholder:text-slate-400 focus:border-zinc-400 focus:outline-none"
                 />
                 {fieldErrors.email && (
                   <p className="mt-1 text-xs text-rose-400">{fieldErrors.email}</p>
@@ -474,7 +474,7 @@ export default function ModernLoginSignup({
               <div>
                 <label
                   htmlFor="login-password"
-                  className="mb-1 block text-xs font-medium text-zinc-300"
+                  className="mb-1 block text-xs font-medium text-slate-300"
                 >
                   Password
                 </label>
@@ -488,13 +488,13 @@ export default function ModernLoginSignup({
                     onChange={(e) => setPassword(e.target.value)}
                     aria-invalid={Boolean(fieldErrors.password)}
                     placeholder="Masukkan password"
-                    className="w-full rounded-md border border-[#333] bg-black px-3.5 py-2.5 pr-10 text-sm text-white placeholder:text-zinc-500 focus:border-zinc-400 focus:outline-none"
+                    className="w-full rounded-xl border border-[#243049] bg-[#0e1626] px-3.5 py-2.5 pr-10 text-sm text-white placeholder:text-slate-400 focus:border-zinc-400 focus:outline-none"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword((prev) => !prev)}
                     aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
-                    className="absolute inset-y-0 right-0 flex items-center px-3 text-zinc-500 hover:text-zinc-300"
+                    className="absolute inset-y-0 right-0 flex items-center px-3 text-slate-400 hover:text-slate-300"
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
@@ -507,7 +507,7 @@ export default function ModernLoginSignup({
               <button
                 type="submit"
                 disabled={loginMutation.isPending}
-                className="mt-1 w-full cursor-pointer rounded-md bg-[#ededed] px-4 py-2.5 text-sm font-medium text-black transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
+                className="mt-1 w-full cursor-pointer rounded-xl bg-gradient-to-r from-cyan-400 to-sky-500 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:from-cyan-300 hover:to-sky-400 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {loginMutation.isPending ? 'Memproses login...' : 'Masuk'}
               </button>
@@ -550,7 +550,7 @@ export default function ModernLoginSignup({
               <div
                 role="alert"
                 data-testid="register-error-alert"
-                className="mb-3.5 flex w-full items-start gap-2 rounded-md border border-rose-500/40 bg-rose-950/50 px-3 py-2.5 text-left text-xs text-rose-200"
+                className="mb-3.5 flex w-full items-start gap-2 rounded-xl border border-rose-500/40 bg-rose-950/50 px-3 py-2.5 text-left text-xs text-rose-200"
               >
                 <AlertCircle
                   className="mt-0.5 h-4 w-4 shrink-0 text-rose-400"
@@ -568,7 +568,7 @@ export default function ModernLoginSignup({
               <div>
                 <label
                   htmlFor="register-email"
-                  className="mb-1 block text-xs font-medium text-zinc-300"
+                  className="mb-1 block text-xs font-medium text-slate-300"
                 >
                   Email Mahasiswa
                 </label>
@@ -581,7 +581,7 @@ export default function ModernLoginSignup({
                   onChange={(e) => setEmail(e.target.value)}
                   aria-invalid={Boolean(fieldErrors.email)}
                   placeholder="nama@mahasiswa.ac.id"
-                  className="w-full rounded-md border border-[#333] bg-black px-3.5 py-2.5 text-sm text-white placeholder:text-zinc-500 focus:border-zinc-400 focus:outline-none"
+                  className="w-full rounded-xl border border-[#243049] bg-[#0e1626] px-3.5 py-2.5 text-sm text-white placeholder:text-slate-400 focus:border-zinc-400 focus:outline-none"
                 />
                 {fieldErrors.email && (
                   <p className="mt-1 text-xs text-rose-400">{fieldErrors.email}</p>
@@ -591,7 +591,7 @@ export default function ModernLoginSignup({
               <div>
                 <label
                   htmlFor="register-password"
-                  className="mb-1 block text-xs font-medium text-zinc-300"
+                  className="mb-1 block text-xs font-medium text-slate-300"
                 >
                   Password (minimal 10 karakter)
                 </label>
@@ -605,13 +605,13 @@ export default function ModernLoginSignup({
                     onChange={(e) => setPassword(e.target.value)}
                     aria-invalid={Boolean(fieldErrors.password)}
                     placeholder="Minimal 10 karakter"
-                    className="w-full rounded-md border border-[#333] bg-black px-3.5 py-2.5 pr-10 text-sm text-white placeholder:text-zinc-500 focus:border-zinc-400 focus:outline-none"
+                    className="w-full rounded-xl border border-[#243049] bg-[#0e1626] px-3.5 py-2.5 pr-10 text-sm text-white placeholder:text-slate-400 focus:border-zinc-400 focus:outline-none"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword((prev) => !prev)}
                     aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
-                    className="absolute inset-y-0 right-0 flex items-center px-3 text-zinc-500 hover:text-zinc-300"
+                    className="absolute inset-y-0 right-0 flex items-center px-3 text-slate-400 hover:text-slate-300"
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
@@ -624,7 +624,7 @@ export default function ModernLoginSignup({
               <div>
                 <label
                   htmlFor="register-confirm-password"
-                  className="mb-1 block text-xs font-medium text-zinc-300"
+                  className="mb-1 block text-xs font-medium text-slate-300"
                 >
                   Konfirmasi Password
                 </label>
@@ -637,7 +637,7 @@ export default function ModernLoginSignup({
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   aria-invalid={Boolean(fieldErrors.confirmPassword)}
                   placeholder="Ulangi password Anda"
-                  className="w-full rounded-md border border-[#333] bg-black px-3.5 py-2.5 text-sm text-white placeholder:text-zinc-500 focus:border-zinc-400 focus:outline-none"
+                  className="w-full rounded-xl border border-[#243049] bg-[#0e1626] px-3.5 py-2.5 text-sm text-white placeholder:text-slate-400 focus:border-zinc-400 focus:outline-none"
                 />
                 {fieldErrors.confirmPassword && (
                   <p className="mt-1 text-xs text-rose-400">{fieldErrors.confirmPassword}</p>
@@ -647,7 +647,7 @@ export default function ModernLoginSignup({
               <button
                 type="submit"
                 disabled={registerMutation.isPending}
-                className="mt-1 w-full cursor-pointer rounded-md bg-[#ededed] px-4 py-2.5 text-sm font-medium text-black transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
+                className="mt-1 w-full cursor-pointer rounded-xl bg-gradient-to-r from-cyan-400 to-sky-500 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:from-cyan-300 hover:to-sky-400 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {registerMutation.isPending ? 'Mendaftarkan akun...' : 'Daftar & Masuk'}
               </button>

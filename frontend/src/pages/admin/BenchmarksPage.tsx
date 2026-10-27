@@ -130,14 +130,14 @@ export function BenchmarksPage() {
   return (
     <div data-testid="admin-benchmarks-page" className="space-y-6">
       <header className={`${CARD} p-6`}>
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-[#333] bg-black px-3 py-1 text-xs font-medium text-zinc-300">
-          <Gauge className="h-3.5 w-3.5 text-zinc-100" aria-hidden="true" />
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-[#243049] bg-[#0e1626] px-3 py-1 text-xs font-medium text-slate-300">
+          <Gauge className="h-3.5 w-3.5 text-slate-100" aria-hidden="true" />
           Superadmin
         </span>
         <h1 className="mt-2.5 text-2xl font-bold tracking-tight text-white">
           Cipher Benchmark Dashboard
         </h1>
-        <p className="mt-1.5 max-w-prose text-sm text-zinc-400">
+        <p className="mt-1.5 max-w-prose text-sm text-slate-400">
           Throughput terukur untuk ketiga cabang cipher beserta sebaran waktunya, lalu dipakai
           untuk memperkirakan biaya CPU satu skenario unggahan.
         </p>
@@ -164,27 +164,27 @@ export function BenchmarksPage() {
             id="env-heading"
             className="flex items-center gap-1.5 text-lg font-semibold text-white"
           >
-            <Cpu className="h-4 w-4 text-zinc-400" aria-hidden="true" />
+            <Cpu className="h-4 w-4 text-slate-400" aria-hidden="true" />
             Lingkungan pengukuran
           </h2>
           <dl data-testid="benchmark-env" className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-4">
             <div className={`${RECESSED} px-3 py-2 sm:col-span-2`}>
-              <dt className="text-xs text-zinc-400">CPU</dt>
-              <dd className="mt-0.5 text-sm text-zinc-200">{env.cpu}</dd>
+              <dt className="text-xs text-slate-400">CPU</dt>
+              <dd className="mt-0.5 text-sm text-slate-200">{env.cpu}</dd>
             </div>
             <div className={`${RECESSED} px-3 py-2`}>
-              <dt className="text-xs text-zinc-400">AES-NI</dt>
-              <dd className="mt-0.5 text-sm text-zinc-200">
+              <dt className="text-xs text-slate-400">AES-NI</dt>
+              <dd className="mt-0.5 text-sm text-slate-200">
                 {env.aes_ni ? 'Aktif' : 'Tidak aktif'}
               </dd>
             </div>
             <div className={`${RECESSED} px-3 py-2`}>
-              <dt className="text-xs text-zinc-400">Python</dt>
-              <dd className="mt-0.5 text-sm tabular-nums text-zinc-200">{env.python}</dd>
+              <dt className="text-xs text-slate-400">Python</dt>
+              <dd className="mt-0.5 text-sm tabular-nums text-slate-200">{env.python}</dd>
             </div>
             <div className={`${RECESSED} px-3 py-2 sm:col-span-4`}>
-              <dt className="text-xs text-zinc-400">PyCryptodome</dt>
-              <dd className="mt-0.5 text-sm tabular-nums text-zinc-200">{env.pycryptodome}</dd>
+              <dt className="text-xs text-slate-400">PyCryptodome</dt>
+              <dd className="mt-0.5 text-sm tabular-nums text-slate-200">{env.pycryptodome}</dd>
             </div>
           </dl>
         </section>
@@ -239,7 +239,7 @@ export function BenchmarksPage() {
         </div>
 
         {tableQuery.isPending ? (
-          <p data-testid="benchmark-loading" className="mt-3 text-sm text-zinc-400">
+          <p data-testid="benchmark-loading" className="mt-3 text-sm text-slate-400">
             Memuat hasil benchmark...
           </p>
         ) : null}
@@ -249,8 +249,8 @@ export function BenchmarksPage() {
             data-testid="benchmark-empty-state"
             className={`mt-3 ${WELL} flex flex-col items-center gap-2 px-4 py-10 text-center`}
           >
-            <Inbox className="h-6 w-6 text-zinc-400" aria-hidden="true" />
-            <p className="text-sm font-medium text-zinc-200">Belum ada hasil untuk filter ini</p>
+            <Inbox className="h-6 w-6 text-slate-400" aria-hidden="true" />
+            <p className="text-sm font-medium text-slate-200">Belum ada hasil untuk filter ini</p>
           </div>
         ) : null}
 
@@ -261,7 +261,7 @@ export function BenchmarksPage() {
                 Throughput median dan rentang antar-kuartil per cipher dan operasi
               </caption>
               <thead>
-                <tr className="border-b border-[#222]">
+                <tr className="border-b border-[#243049]">
                   <th scope="col" className={TH}>
                     Cipher
                   </th>
@@ -290,9 +290,9 @@ export function BenchmarksPage() {
                   <tr
                     key={`${row.cipher}-${row.operation}-${row.size_bytes}`}
                     data-testid={`benchmark-row-${row.cipher}-${row.operation}-${row.size_bytes}`}
-                    className="border-b border-[#1c1c1c] last:border-b-0"
+                    className="border-b border-[#1e293f] last:border-b-0"
                   >
-                    <td className={`${TD} font-medium text-zinc-100`}>
+                    <td className={`${TD} font-medium text-slate-100`}>
                       {CIPHER_LABELS[row.cipher]}
                     </td>
                     <td className={TD}>{OPERATION_LABELS[row.operation]}</td>
@@ -304,7 +304,7 @@ export function BenchmarksPage() {
                     <td className={`${TD} tabular-nums whitespace-nowrap`}>
                       {nanosecondsToMs(row.q1_ns)}–{nanosecondsToMs(row.q3_ns)} ms
                     </td>
-                    <td className={`${TD} tabular-nums whitespace-nowrap text-zinc-100`}>
+                    <td className={`${TD} tabular-nums whitespace-nowrap text-slate-100`}>
                       {row.median_mb_s} MB/s
                     </td>
                   </tr>
@@ -324,15 +324,15 @@ export function BenchmarksPage() {
           id="tcpu-heading"
           className="flex items-center gap-1.5 text-lg font-semibold text-white"
         >
-          <Calculator className="h-4 w-4 text-zinc-400" aria-hidden="true" />
+          <Calculator className="h-4 w-4 text-slate-400" aria-hidden="true" />
           Kalkulator skenario T<sub>CPU</sub>
         </h2>
 
-        <p data-testid="tcpu-formula" className={`mt-3 ${WELL} px-3 py-2.5 text-sm text-zinc-300`}>
-          <code className="font-mono text-xs break-words text-zinc-200">
+        <p data-testid="tcpu-formula" className={`mt-3 ${WELL} px-3 py-2.5 text-sm text-slate-300`}>
+          <code className="font-mono text-xs break-words text-slate-200">
             T_CPU = N · S · (1/v_AES + 1/v_DES + 1/v_RC4 + 3/v_HMAC)
           </code>
-          <span className="mt-1.5 block text-zinc-400">
+          <span className="mt-1.5 block text-slate-400">
             Setiap unggahan dienkripsi tiga kali dan setiap ciphertext memperoleh tag HMAC-nya
             sendiri, sehingga suku HMAC dikalikan 3 sementara tiap cipher dibayar sekali.
           </span>
@@ -374,7 +374,7 @@ export function BenchmarksPage() {
         {missing.length > 0 ? (
           <p
             data-testid="tcpu-incomplete"
-            className="mt-3 flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-950/30 px-3 py-2.5 text-sm text-amber-200"
+            className="mt-3 flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-950/30 px-3 py-2.5 text-sm text-amber-200"
           >
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
             <span>
@@ -382,18 +382,18 @@ export function BenchmarksPage() {
             </span>
           </p>
         ) : !scenarioValid ? (
-          <p data-testid="tcpu-invalid-scenario" className="mt-3 text-sm text-zinc-400">
+          <p data-testid="tcpu-invalid-scenario" className="mt-3 text-sm text-slate-400">
             Masukkan jumlah item dan ukuran per item yang lebih besar dari nol.
           </p>
         ) : tCpuSeconds !== null ? (
           <div data-testid="tcpu-result" className={`mt-3 ${RECESSED} px-4 py-3`}>
-            <p className="text-xs text-zinc-400">
+            <p className="text-xs text-slate-400">
               Perkiraan waktu CPU untuk {parsedItemCount} item × {parsedSizeMb} MB
             </p>
             <p className="mt-1 font-mono text-2xl font-bold tabular-nums text-white sm:text-3xl">
               {tCpuSeconds.toFixed(2)} s
             </p>
-            <p className="mt-1.5 text-xs text-zinc-400">
+            <p className="mt-1.5 text-xs text-slate-400">
               Berdasarkan v_AES = {throughputs.aes} MB/s, v_DES = {throughputs.des} MB/s, v_RC4 ={' '}
               {throughputs.rc4} MB/s, v_HMAC = {throughputs.hmac} MB/s (sumber:{' '}
               {SOURCE_LABELS[source]}). Angka ini hanya biaya CPU kriptografi, bukan total latensi

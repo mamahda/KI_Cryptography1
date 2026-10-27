@@ -20,7 +20,7 @@ function SessionCheckingFallback() {
       data-testid="session-loading"
       className="flex min-h-[40vh] items-center justify-center"
     >
-      <div className="rounded-xl border border-[#222] bg-[#121212] px-6 py-4 text-sm text-zinc-300 shadow-lg">
+      <div className="rounded-2xl border border-[#243049] bg-[#141d2e] px-6 py-4 text-sm text-slate-300 shadow-lg">
         Memeriksa sesi autentikasi...
       </div>
     </div>
@@ -89,14 +89,14 @@ export function RoleGuard({ allowedRoles, children }: RoleGuardProps) {
     return (
       <section
         data-testid="role-forbidden"
-        className="mx-auto max-w-lg rounded-xl border border-rose-500/40 bg-[#121212] p-6 shadow-[0_10px_40px_rgba(0,0,0,0.8)]"
+        className="mx-auto max-w-lg rounded-2xl border border-rose-500/40 bg-[#141d2e] p-6 shadow-[0_18px_50px_rgba(0,0,0,0.45)]"
       >
         <div className="flex items-start gap-3">
           <ShieldAlert className="mt-0.5 h-6 w-6 shrink-0 text-rose-400" aria-hidden="true" />
           <div>
             <h1 className="text-lg font-semibold text-white">403 — Akses Ditolak</h1>
-            <p className="mt-1 text-sm text-zinc-400">
-              Akun Anda masuk sebagai <span className="font-medium text-zinc-200">{user.role}</span>{' '}
+            <p className="mt-1 text-sm text-slate-400">
+              Akun Anda masuk sebagai <span className="font-medium text-slate-200">{user.role}</span>{' '}
               dan tidak memiliki hak akses ke halaman ini.
             </p>
             <div className="mt-4">

@@ -2,7 +2,6 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   AlertCircle,
   AlertTriangle,
-  ArrowLeft,
   ArrowRight,
   CheckCircle2,
   Download,
@@ -64,7 +63,7 @@ const VERIFICATION_BADGE_STYLES: Record<
 > = {
   belum_lengkap: {
     label: 'Belum Lengkap',
-    className: 'border-zinc-700 bg-zinc-900 text-zinc-300',
+    className: 'border-zinc-700 bg-zinc-900 text-slate-300',
   },
   menunggu: {
     label: 'Menunggu Verifikasi',
@@ -115,7 +114,7 @@ function formatUploadedAt(iso: string): string {
   }).format(date)
 }
 
-export function DocumentManagerPage() {
+export function DocumentsSection() {
   const queryClient = useQueryClient()
   const user = useAuthStore((state) => state.user)
 
@@ -398,19 +397,12 @@ export function DocumentManagerPage() {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <header className="flex flex-wrap items-start justify-between gap-4 rounded-xl border border-[#222] bg-[#121212] p-6 shadow-[0_10px_40px_rgba(0,0,0,0.8)]">
+      <header className="flex flex-wrap items-start justify-between gap-4 px-1">
         <div>
-          <Link
-            to="/dashboard"
-            className="inline-flex items-center gap-1.5 text-xs font-medium text-zinc-400 transition hover:text-white"
-          >
-            <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
-            Kembali ke Dashboard
-          </Link>
-          <h1 className="mt-2 text-2xl font-bold tracking-tight text-white">Document Manager</h1>
-          <p className="mt-1 text-sm text-zinc-400">
+          <h2 className="text-xl font-bold tracking-tight text-white">Document Manager</h2>
+          <p className="mt-1 text-sm text-slate-400">
             Unggah scan KTP, KTM/KRSM, dan bukti Twibbon (JPG, PNG, atau PDF maksimal{' '}
-            <strong className="font-medium text-zinc-200">{formatBytes(maxDocBytes)}</strong>). File
+            <strong className="font-medium text-slate-200">{formatBytes(maxDocBytes)}</strong>). File
             dikirim sebagai stream mentah tanpa file plaintext sementara di disk.
           </p>
         </div>
@@ -418,7 +410,7 @@ export function DocumentManagerPage() {
         <div className="flex flex-wrap items-center gap-2.5">
           <span
             data-testid="documents-progress-pill"
-            className="rounded-full border border-[#333] bg-black px-3 py-1.5 text-xs font-medium text-zinc-200"
+            className="rounded-full border border-[#243049] bg-[#0e1626] px-3 py-1.5 text-xs font-medium text-slate-200"
           >
             {uploadedCount}/3 dokumen terunggah
           </span>
@@ -435,7 +427,7 @@ export function DocumentManagerPage() {
       {profile && !profile.profile_complete && (
         <section
           data-testid="profile-incomplete-reminder"
-          className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-500/35 bg-amber-950/30 px-5 py-4 text-xs text-amber-200"
+          className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-500/35 bg-amber-950/30 px-5 py-4 text-xs text-amber-200"
         >
           <div className="flex items-center gap-2.5">
             <AlertTriangle className="h-4 w-4 shrink-0 text-amber-400" aria-hidden="true" />
@@ -446,7 +438,7 @@ export function DocumentManagerPage() {
           </div>
           <Link
             to="/profile"
-            className="inline-flex items-center gap-1 rounded-md border border-amber-400/40 bg-black px-3 py-1.5 text-xs font-semibold text-white transition hover:border-amber-300"
+            className="inline-flex items-center gap-1 rounded-xl border border-amber-400/40 bg-[#0e1626] px-3 py-1.5 text-xs font-semibold text-white transition hover:border-amber-300"
           >
             Lengkapi Profil
             <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
@@ -459,7 +451,7 @@ export function DocumentManagerPage() {
         <section
           role="alert"
           data-testid="documents-deadline-alert"
-          className="flex items-center gap-2.5 rounded-xl border border-rose-500/40 bg-rose-950/35 px-5 py-4 text-xs text-rose-200"
+          className="flex items-center gap-2.5 rounded-2xl border border-rose-500/40 bg-rose-950/35 px-5 py-4 text-xs text-rose-200"
         >
           <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" aria-hidden="true" />
           <span>
@@ -474,7 +466,7 @@ export function DocumentManagerPage() {
         <div
           role="status"
           data-testid="documents-loading"
-          className="rounded-xl border border-[#222] bg-[#121212] p-6 text-center text-sm text-zinc-400"
+          className="rounded-2xl border border-[#243049] bg-[#141d2e] p-6 text-center text-sm text-slate-400"
         >
           Memuat status ketiga dokumen identitas...
         </div>
@@ -484,7 +476,7 @@ export function DocumentManagerPage() {
         <section
           role="alert"
           data-testid="documents-load-error"
-          className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-rose-500/40 bg-rose-950/40 px-5 py-4 text-sm text-rose-200"
+          className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-rose-500/40 bg-rose-950/40 px-5 py-4 text-sm text-rose-200"
         >
           <div className="flex items-center gap-2.5">
             <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" aria-hidden="true" />
@@ -497,7 +489,7 @@ export function DocumentManagerPage() {
           <button
             type="button"
             onClick={() => void documentsQuery.refetch()}
-            className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-rose-400/40 bg-black px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-950"
+            className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-rose-400/40 bg-[#0e1626] px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-950"
           >
             <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
             Muat Ulang
@@ -507,7 +499,7 @@ export function DocumentManagerPage() {
 
       {/* 3 Document Cards */}
       {documents && (
-        <div className="grid gap-5 lg:grid-cols-3">
+        <div className="grid gap-5 sm:grid-cols-2">
           {DOCUMENT_SLOTS.map((slot) => {
             const item = documents[slot.type]
             const state = slotStates[slot.type]
@@ -518,13 +510,13 @@ export function DocumentManagerPage() {
               <article
                 key={slot.type}
                 data-testid={`document-card-${slot.type}`}
-                className="flex flex-col justify-between rounded-xl border border-[#222] bg-[#121212] p-6 shadow-[0_10px_40px_rgba(0,0,0,0.8)]"
+                className="flex flex-col justify-between rounded-2xl border border-[#243049] bg-[#141d2e] p-6 shadow-[0_18px_50px_rgba(0,0,0,0.45)]"
               >
                 <div>
                   {/* Card Header */}
-                  <div className="flex items-start justify-between gap-3 border-b border-[#222] pb-4">
+                  <div className="flex items-start justify-between gap-3 border-b border-[#243049] pb-4">
                     <div className="flex items-center gap-3">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#333] bg-[#111] text-white">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#243049] bg-[#0e1626] text-white">
                         {item ? (
                           isPdf ? (
                             <FileText className="h-5 w-5" aria-hidden="true" />
@@ -532,12 +524,12 @@ export function DocumentManagerPage() {
                             <FileImage className="h-5 w-5" aria-hidden="true" />
                           )
                         ) : (
-                          <FileCheck2 className="h-5 w-5 text-zinc-400" aria-hidden="true" />
+                          <FileCheck2 className="h-5 w-5 text-slate-400" aria-hidden="true" />
                         )}
                       </div>
                       <div>
                         <h2 className="text-base font-semibold text-white">{slot.title}</h2>
-                        <p className="text-xs text-zinc-400">{slot.subtitle}</p>
+                        <p className="text-xs text-slate-400">{slot.subtitle}</p>
                       </div>
                     </div>
 
@@ -546,7 +538,7 @@ export function DocumentManagerPage() {
                         Terunggah
                       </span>
                     ) : (
-                      <span className="shrink-0 rounded-full border border-zinc-700 bg-zinc-900 px-2.5 py-0.5 text-[11px] font-medium text-zinc-400">
+                      <span className="shrink-0 rounded-full border border-zinc-700 bg-zinc-900 px-2.5 py-0.5 text-[11px] font-medium text-slate-400">
                         Kosong
                       </span>
                     )}
@@ -554,9 +546,9 @@ export function DocumentManagerPage() {
 
                   {/* Metadata or Empty State */}
                   {item ? (
-                    <dl className="mt-4 space-y-2 rounded-lg border border-[#222] bg-black p-3.5 text-xs">
+                    <dl className="mt-4 space-y-2 rounded-xl border border-[#243049] bg-[#0e1626] p-3.5 text-xs">
                       <div className="flex items-center justify-between gap-2">
-                        <dt className="text-zinc-500">Nama File</dt>
+                        <dt className="text-slate-400">Nama File</dt>
                         <dd
                           className="max-w-[180px] truncate font-medium text-white"
                           title={item.original_filename}
@@ -565,25 +557,25 @@ export function DocumentManagerPage() {
                         </dd>
                       </div>
                       <div className="flex items-center justify-between gap-2">
-                        <dt className="text-zinc-500">Format &amp; Ukuran</dt>
-                        <dd className="font-mono text-zinc-300">
+                        <dt className="text-slate-400">Format &amp; Ukuran</dt>
+                        <dd className="font-mono text-slate-300">
                           {item.content_type} · {formatBytes(item.size_bytes)}
                         </dd>
                       </div>
                       <div className="flex items-center justify-between gap-2">
-                        <dt className="text-zinc-500">Diunggah</dt>
-                        <dd className="text-zinc-300">{formatUploadedAt(item.uploaded_at)}</dd>
+                        <dt className="text-slate-400">Diunggah</dt>
+                        <dd className="text-slate-300">{formatUploadedAt(item.uploaded_at)}</dd>
                       </div>
                       <div className="flex items-center justify-between gap-2">
-                        <dt className="text-zinc-500">Item ID</dt>
-                        <dd className="font-mono text-[11px] text-zinc-400">
+                        <dt className="text-slate-400">Item ID</dt>
+                        <dd className="font-mono text-[11px] text-slate-400">
                           {item.item_id.slice(0, 8)}…
                         </dd>
                       </div>
                     </dl>
                   ) : (
-                    <div className="mt-4 rounded-lg border border-dashed border-[#2f2f2f] bg-black/70 p-4 text-xs text-zinc-400">
-                      <p className="font-medium text-zinc-200">Belum ada dokumen terunggah.</p>
+                    <div className="mt-4 rounded-xl border border-dashed border-[#2f2f2f] bg-[#0e1626]/70 p-4 text-xs text-slate-400">
+                      <p className="font-medium text-slate-200">Belum ada dokumen terunggah.</p>
                       <p className="mt-1 leading-relaxed">{slot.privacyNote}</p>
                     </div>
                   )}
@@ -592,13 +584,13 @@ export function DocumentManagerPage() {
                   {state.isUploading && (
                     <div
                       data-testid={`doc-progress-box-${slot.type}`}
-                      className="mt-4 rounded-lg border border-[#333] bg-black p-3.5"
+                      className="mt-4 rounded-xl border border-[#243049] bg-[#0e1626] p-3.5"
                     >
                       <div className="flex items-center justify-between text-xs">
-                        <span className="font-medium text-zinc-200">
+                        <span className="font-medium text-slate-200">
                           Mengenkripsi &amp; mengunggah stream...
                         </span>
-                        <span className="font-mono text-zinc-300">
+                        <span className="font-mono text-slate-300">
                           {state.progress?.percent !== null && state.progress?.percent !== undefined
                             ? `${state.progress.percent}%`
                             : 'Memproses...'}
@@ -618,7 +610,7 @@ export function DocumentManagerPage() {
                           style={{ width: `${Math.max(4, percent)}%` }}
                         />
                       </div>
-                      <div className="mt-2 flex items-center justify-between text-[11px] text-zinc-500">
+                      <div className="mt-2 flex items-center justify-between text-[11px] text-slate-400">
                         <span>
                           {state.progress
                             ? `${formatBytes(state.progress.loaded)} / ${formatBytes(state.progress.total)}`
@@ -640,7 +632,7 @@ export function DocumentManagerPage() {
                     <div
                       role="alert"
                       data-testid={`doc-error-${slot.type}`}
-                      className="mt-4 flex items-start gap-2 rounded-lg border border-rose-500/40 bg-rose-950/40 p-3 text-xs text-rose-200"
+                      className="mt-4 flex items-start gap-2 rounded-xl border border-rose-500/40 bg-rose-950/40 p-3 text-xs text-rose-200"
                     >
                       <AlertCircle
                         className="mt-0.5 h-3.5 w-3.5 shrink-0 text-rose-400"
@@ -655,7 +647,7 @@ export function DocumentManagerPage() {
                     <div
                       role="status"
                       data-testid={`doc-success-${slot.type}`}
-                      className="mt-4 flex items-start gap-2 rounded-lg border border-emerald-500/40 bg-emerald-950/35 p-3 text-xs text-emerald-200"
+                      className="mt-4 flex items-start gap-2 rounded-xl border border-emerald-500/40 bg-emerald-950/35 p-3 text-xs text-emerald-200"
                     >
                       <CheckCircle2
                         className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-400"
@@ -667,7 +659,7 @@ export function DocumentManagerPage() {
                 </div>
 
                 {/* Action Buttons + Hidden File Input */}
-                <div className="mt-5 space-y-2.5 border-t border-[#222] pt-4">
+                <div className="mt-5 space-y-2.5 border-t border-[#243049] pt-4">
                   <input
                     ref={(el) => {
                       fileInputRefs.current[slot.type] = el
@@ -689,7 +681,7 @@ export function DocumentManagerPage() {
                           data-testid={`doc-preview-btn-${slot.type}`}
                           onClick={() => void handleOpenPreview(slot.title, item)}
                           disabled={state.isUploading}
-                          className="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-md border border-[#333] bg-black px-3 py-2 text-xs font-medium text-zinc-200 transition hover:border-zinc-500 hover:text-white disabled:opacity-50"
+                          className="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-[#243049] bg-[#0e1626] px-3 py-2 text-xs font-medium text-slate-200 transition hover:border-cyan-400/60 hover:text-white disabled:opacity-50"
                         >
                           <Eye className="h-3.5 w-3.5" aria-hidden="true" />
                           Pratinjau
@@ -700,7 +692,7 @@ export function DocumentManagerPage() {
                           data-testid={`doc-download-btn-${slot.type}`}
                           onClick={() => void handleDownloadDocument(slot.type, item)}
                           disabled={state.isUploading || downloadingType === slot.type}
-                          className="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-md border border-[#333] bg-black px-3 py-2 text-xs font-medium text-zinc-200 transition hover:border-zinc-500 hover:text-white disabled:opacity-50"
+                          className="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-[#243049] bg-[#0e1626] px-3 py-2 text-xs font-medium text-slate-200 transition hover:border-cyan-400/60 hover:text-white disabled:opacity-50"
                         >
                           <Download className="h-3.5 w-3.5" aria-hidden="true" />
                           {downloadingType === slot.type ? 'Mengunduh...' : 'Unduh'}
@@ -738,21 +730,21 @@ export function DocumentManagerPage() {
       )}
 
       {/* Security & Replace Semantics Footer */}
-      <footer className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#222] bg-[#121212] px-5 py-4 text-xs text-zinc-400">
+      <footer className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#243049] bg-[#141d2e] px-5 py-4 text-xs text-slate-400">
         <div className="flex items-center gap-2">
-          <Lock className="h-3.5 w-3.5 shrink-0 text-zinc-300" aria-hidden="true" />
+          <Lock className="h-3.5 w-3.5 shrink-0 text-slate-300" aria-hidden="true" />
           <span>
             Mengunggah ulang akan menggantikan file lama dengan kunci &amp; nonce baru. Saat dibuka,
             server memverifikasi HMAC dan kesamaan ketiga dekripsi penuh sebelum mengirim blob.
           </span>
         </div>
-        <Link
-          to="/team"
-          className="inline-flex items-center gap-1 font-medium text-zinc-200 transition hover:text-white"
+        <a
+          href="#team-section"
+          className="inline-flex items-center gap-1 font-medium text-slate-200 transition hover:text-white"
         >
           Lanjut ke Team Workspace
           <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
-        </Link>
+        </a>
       </footer>
 
       {/* Inline Blob Preview Modal */}
@@ -762,15 +754,15 @@ export function DocumentManagerPage() {
           aria-modal="true"
           aria-labelledby="doc-preview-modal-title"
           data-testid="document-preview-modal"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[#0c1424]/90 p-4 backdrop-blur-sm"
         >
-          <div className="flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-xl border border-[#333] bg-[#121212] shadow-[0_24px_80px_rgba(0,0,0,0.95)]">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#222] px-5 py-4">
+          <div className="flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-[#243049] bg-[#141d2e] shadow-[0_24px_80px_rgba(0,0,0,0.95)]">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#243049] px-5 py-4">
               <div>
                 <h2 id="doc-preview-modal-title" className="text-sm font-semibold text-white">
                   Pratinjau {previewModal.slotTitle} — {previewModal.item.original_filename}
                 </h2>
-                <p className="text-xs text-zinc-400">
+                <p className="text-xs text-slate-400">
                   Terverifikasi penuh dari 3 ciphertext (AES-CTR, DES-CTR, RC4 + HMAC-SHA256) ·{' '}
                   {formatBytes(previewModal.item.size_bytes)}
                 </p>
@@ -785,7 +777,7 @@ export function DocumentManagerPage() {
                       previewModal.item,
                     )
                   }
-                  className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-[#333] bg-black px-3 py-1.5 text-xs font-medium text-zinc-200 transition hover:border-zinc-500 hover:text-white"
+                  className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-[#243049] bg-[#0e1626] px-3 py-1.5 text-xs font-medium text-slate-200 transition hover:border-cyan-400/60 hover:text-white"
                 >
                   <Download className="h-3.5 w-3.5" aria-hidden="true" />
                   Unduh (?download=1)
@@ -794,17 +786,17 @@ export function DocumentManagerPage() {
                   type="button"
                   aria-label="Tutup pratinjau"
                   onClick={closePreviewModal}
-                  className="inline-flex cursor-pointer items-center justify-center rounded-md border border-[#333] bg-black p-1.5 text-zinc-400 transition hover:border-zinc-500 hover:text-white"
+                  className="inline-flex cursor-pointer items-center justify-center rounded-xl border border-[#243049] bg-[#0e1626] p-1.5 text-slate-400 transition hover:border-cyan-400/60 hover:text-white"
                 >
                   <X className="h-4 w-4" aria-hidden="true" />
                 </button>
               </div>
             </div>
 
-            <div className="flex-1 overflow-auto bg-black p-5">
+            <div className="flex-1 overflow-auto bg-[#0e1626] p-5">
               {previewModal.isLoading && (
-                <div className="flex min-h-[320px] flex-col items-center justify-center text-sm text-zinc-400">
-                  <RefreshCw className="h-6 w-6 animate-spin text-zinc-300" aria-hidden="true" />
+                <div className="flex min-h-[320px] flex-col items-center justify-center text-sm text-slate-400">
+                  <RefreshCw className="h-6 w-6 animate-spin text-slate-300" aria-hidden="true" />
                   <p className="mt-3">
                     Memverifikasi HMAC ketiga ciphertext dan mengunduh blob utuh...
                   </p>
@@ -815,7 +807,7 @@ export function DocumentManagerPage() {
                 <div
                   role="alert"
                   data-testid="document-preview-error"
-                  className="mx-auto my-10 max-w-lg rounded-xl border border-rose-500/40 bg-rose-950/35 p-5 text-rose-100"
+                  className="mx-auto my-10 max-w-lg rounded-2xl border border-rose-500/40 bg-rose-950/35 p-5 text-rose-100"
                 >
                   <div className="flex items-start gap-3">
                     <ShieldAlert
@@ -843,14 +835,14 @@ export function DocumentManagerPage() {
                       data-testid="preview-pdf-iframe"
                       title={`Pratinjau PDF ${previewModal.item.original_filename}`}
                       src={previewModal.objectUrl}
-                      className="h-[68vh] w-full rounded-lg border border-[#222] bg-zinc-950"
+                      className="h-[68vh] w-full rounded-xl border border-[#243049] bg-zinc-950"
                     />
                   ) : (
                     <img
                       data-testid="preview-image"
                       src={previewModal.objectUrl}
                       alt={`Pratinjau ${previewModal.item.original_filename}`}
-                      className="max-h-[68vh] max-w-full rounded-lg border border-[#222] object-contain"
+                      className="max-h-[68vh] max-w-full rounded-xl border border-[#243049] object-contain"
                     />
                   )}
                 </div>

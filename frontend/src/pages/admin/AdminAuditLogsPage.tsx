@@ -65,12 +65,12 @@ export function AdminAuditLogsPage() {
   return (
     <div data-testid="admin-audit-logs-page" className="space-y-6">
       <header className={`${CARD} p-6`}>
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-[#333] bg-black px-3 py-1 text-xs font-medium text-zinc-300">
-          <ScrollText className="h-3.5 w-3.5 text-zinc-100" aria-hidden="true" />
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-[#243049] bg-[#0e1626] px-3 py-1 text-xs font-medium text-slate-300">
+          <ScrollText className="h-3.5 w-3.5 text-slate-100" aria-hidden="true" />
           Superadmin
         </span>
         <h1 className="mt-2.5 text-2xl font-bold tracking-tight text-white">Audit Log</h1>
-        <p className="mt-1.5 max-w-prose text-sm text-zinc-400">
+        <p className="mt-1.5 max-w-prose text-sm text-slate-400">
           Jejak setiap akses ke data pribadi dan setiap perubahan konfigurasi, termasuk kegagalan
           integritas ciphertext yang tercatat tanpa aktor.
         </p>
@@ -166,7 +166,7 @@ export function AdminAuditLogsPage() {
         </form>
 
         {logsQuery.isPending ? (
-          <p data-testid="audit-logs-loading" className="mt-3 text-sm text-zinc-400">
+          <p data-testid="audit-logs-loading" className="mt-3 text-sm text-slate-400">
             Memuat audit log...
           </p>
         ) : null}
@@ -175,7 +175,7 @@ export function AdminAuditLogsPage() {
           <p
             data-testid="audit-logs-error"
             role="alert"
-            className="mt-3 flex items-start gap-2 rounded-md border border-red-500/40 bg-red-950/30 px-3 py-2.5 text-sm text-red-200"
+            className="mt-3 flex items-start gap-2 rounded-xl border border-red-500/40 bg-red-950/30 px-3 py-2.5 text-sm text-red-200"
           >
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
             <span>
@@ -191,8 +191,8 @@ export function AdminAuditLogsPage() {
             data-testid="audit-logs-empty-state"
             className={`mt-3 ${WELL} flex flex-col items-center gap-2 px-4 py-10 text-center`}
           >
-            <Inbox className="h-6 w-6 text-zinc-400" aria-hidden="true" />
-            <p className="text-sm font-medium text-zinc-200">
+            <Inbox className="h-6 w-6 text-slate-400" aria-hidden="true" />
+            <p className="text-sm font-medium text-slate-200">
               Tidak ada entri pada filter ini
             </p>
           </div>
@@ -206,7 +206,7 @@ export function AdminAuditLogsPage() {
                   Entri audit log terbaru lebih dahulu, beserta aktor, aksi, dan objeknya
                 </caption>
                 <thead>
-                  <tr className="border-b border-[#222]">
+                  <tr className="border-b border-[#243049]">
                     <th scope="col" className={TH}>
                       Waktu
                     </th>
@@ -226,7 +226,7 @@ export function AdminAuditLogsPage() {
                     <tr
                       key={entry.id}
                       data-testid={`audit-row-${entry.id}`}
-                      className="border-b border-[#1c1c1c] last:border-b-0"
+                      className="border-b border-[#1e293f] last:border-b-0"
                     >
                       <td className={`${TD} whitespace-nowrap`}>
                         {formatTimestamp(entry.created_at)}
@@ -234,32 +234,32 @@ export function AdminAuditLogsPage() {
                       <td className={TD}>
                         {entry.actor_email ? (
                           <>
-                            <span className="block break-all text-zinc-200">
+                            <span className="block break-all text-slate-200">
                               {entry.actor_email}
                             </span>
-                            <span className="text-xs text-zinc-400">{entry.actor_role}</span>
+                            <span className="text-xs text-slate-400">{entry.actor_role}</span>
                           </>
                         ) : (
-                          <span className="text-zinc-400">Sistem (tanpa aktor)</span>
+                          <span className="text-slate-400">Sistem (tanpa aktor)</span>
                         )}
                       </td>
                       <td className={TD}>
-                        <span className="block text-zinc-200">{ACTION_LABELS[entry.action]}</span>
-                        <code className="text-xs text-zinc-400">{entry.action}</code>
+                        <span className="block text-slate-200">{ACTION_LABELS[entry.action]}</span>
+                        <code className="text-xs text-slate-400">{entry.action}</code>
                       </td>
                       <td className={TD}>
                         {entry.item_id ? (
-                          <span className={`${RECESSED} block px-2 py-1 font-mono text-xs break-all text-zinc-300`}>
+                          <span className={`${RECESSED} block px-2 py-1 font-mono text-xs break-all text-slate-300`}>
                             item {entry.item_id}
                           </span>
                         ) : null}
                         {entry.subject_user_id ? (
-                          <span className={`${RECESSED} mt-1 block px-2 py-1 font-mono text-xs break-all text-zinc-300`}>
+                          <span className={`${RECESSED} mt-1 block px-2 py-1 font-mono text-xs break-all text-slate-300`}>
                             user {entry.subject_user_id}
                           </span>
                         ) : null}
                         {!entry.item_id && !entry.subject_user_id ? (
-                          <span className="text-zinc-400">—</span>
+                          <span className="text-slate-400">—</span>
                         ) : null}
                       </td>
                     </tr>

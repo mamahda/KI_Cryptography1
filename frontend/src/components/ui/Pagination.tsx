@@ -21,12 +21,12 @@ export function Pagination({ testId, page, pageSize, total, onPageChange }: Pagi
       aria-label="Navigasi halaman"
       className="mt-3 flex flex-wrap items-center justify-between gap-3"
     >
-      <p className="text-sm text-zinc-400" aria-live="polite">
-        Menampilkan <span className="tabular-nums text-zinc-200">{first}</span>–
-        <span className="tabular-nums text-zinc-200">{last}</span> dari{' '}
-        <span className="tabular-nums text-zinc-200">{total}</span> data · halaman{' '}
-        <span className="tabular-nums text-zinc-200">{page}</span> dari{' '}
-        <span className="tabular-nums text-zinc-200">{lastPage}</span>
+      <p className="text-sm text-slate-400" aria-live="polite">
+        Menampilkan <span className="tabular-nums text-slate-200">{first}</span>–
+        <span className="tabular-nums text-slate-200">{last}</span> dari{' '}
+        <span className="tabular-nums text-slate-200">{total}</span> data · halaman{' '}
+        <span className="tabular-nums text-slate-200">{page}</span> dari{' '}
+        <span className="tabular-nums text-slate-200">{lastPage}</span>
       </p>
 
       <div className="flex items-center gap-2">

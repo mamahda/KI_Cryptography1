@@ -19,11 +19,11 @@ import { formatBytes } from '@/lib/fileValidation'
 import { useAuthStore } from '@/stores/authStore'
 
 const CARD =
-  'rounded-xl border border-[#222] bg-[#121212] shadow-[0_10px_40px_rgba(0,0,0,0.8)]'
-const WELL = 'rounded-lg border border-[#222] bg-black'
+  'rounded-2xl border border-[#243049] bg-[#141d2e] shadow-[0_18px_50px_rgba(0,0,0,0.45)]'
+const WELL = 'rounded-xl border border-[#243049] bg-[#0e1626]'
 const FOCUS =
-  'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-100'
-const BTN_SECONDARY = `inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-[#333] bg-black px-3.5 py-2 text-sm font-medium text-zinc-200 transition hover:border-zinc-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-50 ${FOCUS}`
+  'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300'
+const BTN_SECONDARY = `inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-[#243049] bg-[#0e1626] px-3.5 py-2 text-sm font-medium text-slate-200 transition hover:border-cyan-400/60 hover:text-white disabled:cursor-not-allowed disabled:opacity-50 ${FOCUS}`
 
 /** One upload becomes three independent ciphertexts (AES-CTR, DES-CTR, RC4). */
 const CIPHERTEXT_COPIES = 3
@@ -114,7 +114,7 @@ export function EncryptionInspectorPage() {
   })
 
   const teamQuery = useQuery({
-    queryKey: ['team', 'me'],
+    queryKey: ['teams', 'me'],
     queryFn: ({ signal }) => apiClient.teams.getMine(signal),
     enabled: isPeserta,
   })
@@ -172,14 +172,14 @@ export function EncryptionInspectorPage() {
   return (
     <div data-testid="encryption-inspector-page" className="space-y-6">
       <header className={`${CARD} p-6`}>
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-[#333] bg-black px-3 py-1 text-xs font-medium text-zinc-300">
-          <ShieldCheck className="h-3.5 w-3.5 text-zinc-100" aria-hidden="true" />
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-[#243049] bg-[#0e1626] px-3 py-1 text-xs font-medium text-slate-300">
+          <ShieldCheck className="h-3.5 w-3.5 text-slate-100" aria-hidden="true" />
           Proteksi &amp; Integritas
         </span>
         <h1 className="mt-2.5 text-2xl font-bold tracking-tight text-white">
           Encryption &amp; Integrity Inspector
         </h1>
-        <p className="mt-1.5 max-w-prose text-sm text-zinc-400">
+        <p className="mt-1.5 max-w-prose text-sm text-slate-400">
           Setiap item Anda disimpan sebagai tiga ciphertext yang berdiri sendiri, masing-masing
           dengan kunci, nonce, dan kunci HMAC sendiri. Halaman ini menampilkan jejak
           penyimpanannya dan meminta server memverifikasi ulang proteksinya secara langsung.
@@ -190,15 +190,15 @@ export function EncryptionInspectorPage() {
       {/* Cipher specs                                                      */}
       {/* ---------------------------------------------------------------- */}
       <section aria-labelledby="cipher-spec-heading" className={`${CARD} p-6`}>
-        <div className="flex items-center gap-3 border-b border-[#222] pb-4">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#333] bg-black text-white">
+        <div className="flex items-center gap-3 border-b border-[#243049] pb-4">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#243049] bg-[#0e1626] text-white">
             <KeyRound className="h-5 w-5" aria-hidden="true" />
           </div>
           <div>
             <h2 id="cipher-spec-heading" className="text-base font-semibold text-white">
               Spesifikasi Tiga Cabang Cipher
             </h2>
-            <p className="text-sm text-zinc-400">
+            <p className="text-sm text-slate-400">
               Ketiganya bermode keystream XOR plaintext agar benchmark adil, tanpa padding, dan
               bisa diproses per chunk 1 MB.
             </p>
@@ -214,12 +214,12 @@ export function EncryptionInspectorPage() {
             >
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <span className="font-mono font-semibold text-white">{spec.name}</span>
-                <span className="text-zinc-400">{spec.mode}</span>
+                <span className="text-slate-400">{spec.mode}</span>
               </div>
-              <p className="mt-1 text-zinc-300">
+              <p className="mt-1 text-slate-300">
                 {spec.keySize} · {spec.nonce}
               </p>
-              <p className="mt-1 font-mono text-sm break-all text-zinc-400">{spec.call}</p>
+              <p className="mt-1 font-mono text-sm break-all text-slate-400">{spec.call}</p>
             </li>
           ))}
         </ul>
@@ -227,13 +227,13 @@ export function EncryptionInspectorPage() {
         <div className="mt-4 grid gap-2.5 sm:grid-cols-2">
           <div data-testid="integrity-spec" className={`${WELL} px-3.5 py-3 text-sm`}>
             <div className="flex items-center gap-2 font-medium text-white">
-              <Fingerprint className="h-4 w-4 shrink-0 text-zinc-300" aria-hidden="true" />
+              <Fingerprint className="h-4 w-4 shrink-0 text-slate-300" aria-hidden="true" />
               HMAC-SHA256 per ciphertext
             </div>
-            <p className="mt-1.5 text-zinc-400">
+            <p className="mt-1.5 text-slate-400">
               Pola encrypt-then-MAC, satu tag untuk setiap ciphertext, dengan kunci HMAC 32 byte
               yang terpisah dari kunci enkripsi. Input tag ={' '}
-              <span className="font-mono text-zinc-300">
+              <span className="font-mono text-slate-300">
                 item_id ‖ field ‖ cipher ‖ nonce ‖ ciphertext
               </span>
               .
@@ -242,12 +242,12 @@ export function EncryptionInspectorPage() {
 
           <div data-testid="kek-spec" className={`${WELL} px-3.5 py-3 text-sm`}>
             <div className="flex items-center gap-2 font-medium text-white">
-              <KeyRound className="h-4 w-4 shrink-0 text-zinc-300" aria-hidden="true" />
+              <KeyRound className="h-4 w-4 shrink-0 text-slate-300" aria-hidden="true" />
               Pembungkus kunci: AES-256-GCM
             </div>
-            <p className="mt-1.5 text-zinc-400">
+            <p className="mt-1.5 text-slate-400">
               Kunci enkripsi dan kunci HMAC dibungkus AES-256-GCM dengan nonce 12 byte dan AAD ={' '}
-              <span className="font-mono text-zinc-300">item_id ‖ cipher</span>, memakai satu root
+              <span className="font-mono text-slate-300">item_id ‖ cipher</span>, memakai satu root
               key 32 byte sebagai KEK yang tidak pernah masuk repo.
             </p>
           </div>
@@ -258,16 +258,16 @@ export function EncryptionInspectorPage() {
       {/* Item inventory                                                    */}
       {/* ---------------------------------------------------------------- */}
       <section aria-labelledby="inventory-heading" className={`${CARD} p-6`}>
-        <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#222] pb-4">
+        <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#243049] pb-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#333] bg-black text-white">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#243049] bg-[#0e1626] text-white">
               <Database className="h-5 w-5" aria-hidden="true" />
             </div>
             <div>
               <h2 id="inventory-heading" className="text-base font-semibold text-white">
                 Inventaris Item Terenkripsi
               </h2>
-              <p className="text-sm text-zinc-400">
+              <p className="text-sm text-slate-400">
                 Jejak penyimpanan = 3 × ukuran plaintext + ±{ITEM_METADATA_OVERHEAD_BYTES} byte
                 metadata per item
               </p>
@@ -276,15 +276,15 @@ export function EncryptionInspectorPage() {
 
           {items.length > 0 && (
             <div className="text-right text-sm">
-              <p className="text-zinc-400">
+              <p className="text-slate-400">
                 Plaintext{' '}
-                <span className="font-medium text-zinc-200 tabular-nums">
+                <span className="font-medium text-slate-200 tabular-nums">
                   {formatBytes(totalPlaintextBytes)}
                 </span>
               </p>
-              <p className="mt-0.5 text-zinc-400">
+              <p className="mt-0.5 text-slate-400">
                 Tersimpan ±{' '}
-                <span className="font-medium text-zinc-200 tabular-nums">
+                <span className="font-medium text-slate-200 tabular-nums">
                   {formatBytes(totalFootprintBytes)}
                 </span>
               </p>
@@ -295,9 +295,9 @@ export function EncryptionInspectorPage() {
         {!isPeserta ? (
           <div
             data-testid="inventory-role-notice"
-            className={`mt-4 flex items-start gap-2.5 ${WELL} px-3.5 py-3 text-sm text-zinc-300`}
+            className={`mt-4 flex items-start gap-2.5 ${WELL} px-3.5 py-3 text-sm text-slate-300`}
           >
-            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-zinc-400" aria-hidden="true" />
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
             <span>
               Inventaris ini memuat item milik akun peserta yang sedang masuk. Peran juri dan
               superadmin membuka file tim lewat portalnya masing-masing, bukan dari halaman ini.
@@ -307,16 +307,16 @@ export function EncryptionInspectorPage() {
           <p
             role="status"
             data-testid="inventory-loading"
-            className="mt-4 text-sm text-zinc-300"
+            className="mt-4 text-sm text-slate-300"
           >
             Memuat inventaris item terenkripsi...
           </p>
         ) : items.length === 0 ? (
           <div
             data-testid="inventory-empty-state"
-            className={`mt-4 flex items-start gap-2.5 ${WELL} px-3.5 py-3 text-sm text-zinc-300`}
+            className={`mt-4 flex items-start gap-2.5 ${WELL} px-3.5 py-3 text-sm text-slate-300`}
           >
-            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-zinc-400" aria-hidden="true" />
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
             <span>
               Belum ada item terenkripsi. Unggah dokumen identitas di Document Manager atau
               karya tim di Team Workspace, lalu kembali ke halaman ini untuk memeriksa
@@ -337,14 +337,14 @@ export function EncryptionInspectorPage() {
                     <div className="min-w-0">
                       <p className="font-medium text-white">
                         {FIELD_LABELS[item.field]}{' '}
-                        <span className="font-mono text-sm font-normal text-zinc-400">
+                        <span className="font-mono text-sm font-normal text-slate-400">
                           ({item.field})
                         </span>
                       </p>
-                      <p className="mt-0.5 font-mono text-sm break-all text-zinc-400">
+                      <p className="mt-0.5 font-mono text-sm break-all text-slate-400">
                         {item.item_id}
                       </p>
-                      <p className="mt-1 text-zinc-400">
+                      <p className="mt-1 text-slate-400">
                         {item.original_filename} · {item.content_type}
                       </p>
                     </div>
@@ -364,17 +364,17 @@ export function EncryptionInspectorPage() {
                   </div>
 
                   <dl className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                    <div className="rounded-md border border-[#2a2a2a] bg-[#0a0a0a] px-3 py-2">
-                      <dt className="text-sm text-zinc-400">Ukuran plaintext</dt>
-                      <dd className="mt-0.5 font-medium text-zinc-100 tabular-nums">
+                    <div className="rounded-xl border border-[#1e293f] bg-[#0e1626] px-3 py-2">
+                      <dt className="text-sm text-slate-400">Ukuran plaintext</dt>
+                      <dd className="mt-0.5 font-medium text-slate-100 tabular-nums">
                         {formatBytes(item.size_bytes)}
                       </dd>
                     </div>
-                    <div className="rounded-md border border-[#2a2a2a] bg-[#0a0a0a] px-3 py-2">
-                      <dt className="text-sm text-zinc-400">
+                    <div className="rounded-xl border border-[#1e293f] bg-[#0e1626] px-3 py-2">
+                      <dt className="text-sm text-slate-400">
                         Jejak 3× ciphertext (perkiraan)
                       </dt>
-                      <dd className="mt-0.5 font-medium text-zinc-100 tabular-nums">
+                      <dd className="mt-0.5 font-medium text-slate-100 tabular-nums">
                         {formatBytes(ciphertextFootprintBytes(item.size_bytes))}
                       </dd>
                     </div>
@@ -383,7 +383,7 @@ export function EncryptionInspectorPage() {
                   {state.status === 'ok' && (
                     <div
                       data-testid={`verify-result-${item.field}`}
-                      className="mt-3 rounded-lg border border-emerald-500/30 bg-emerald-950/25 px-3.5 py-3 text-sm text-emerald-100"
+                      className="mt-3 rounded-xl border border-emerald-500/30 bg-emerald-950/25 px-3.5 py-3 text-sm text-emerald-100"
                     >
                       <div className="flex items-center gap-2 font-medium text-white">
                         <CheckCircle2
@@ -415,7 +415,7 @@ export function EncryptionInspectorPage() {
                     <div
                       role="alert"
                       data-testid={`verify-error-${item.field}`}
-                      className="mt-3 rounded-lg border border-rose-500/40 bg-rose-950/35 px-3.5 py-3 text-sm text-rose-100"
+                      className="mt-3 rounded-xl border border-rose-500/40 bg-rose-950/35 px-3.5 py-3 text-sm text-rose-100"
                     >
                       <div className="flex items-start gap-2">
                         <ShieldAlert
