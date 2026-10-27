@@ -61,7 +61,7 @@ interface CountdownCardProps {
   testId: string
   title: string
   subtitle: string
-  deadlineIso: string
+  deadlineIso: string | null
   nowMs: number
 }
 
@@ -72,8 +72,8 @@ function DeadlineCountdownCard({
   deadlineIso,
   nowMs,
 }: CountdownCardProps) {
-  const snapshot = computeCountdown(deadlineIso, nowMs)
-  const formattedDate = formatDeadlineDisplay(deadlineIso)
+  const snapshot = deadlineIso ? computeCountdown(deadlineIso, nowMs) : null
+  const formattedDate = deadlineIso ? formatDeadlineDisplay(deadlineIso) : 'Belum ditetapkan'
 
   return (
     <div
@@ -124,7 +124,7 @@ function DeadlineCountdownCard({
           ))}
         </div>
       ) : (
-        <p className="mt-4 text-xs text-zinc-500">Format waktu tenggat tidak valid.</p>
+        <p className="mt-4 text-xs text-zinc-500">{deadlineIso ? 'Format waktu tenggat tidak valid.' : 'Tenggat belum ditetapkan.'}</p>
       )}
 
       <p className="mt-3 text-xs text-zinc-400">
