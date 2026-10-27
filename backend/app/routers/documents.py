@@ -5,6 +5,7 @@ import sqlite3
 from fastapi import APIRouter, Depends, HTTPException, Request, Header
 from urllib.parse import unquote
 from starlette import status
+from starlette.concurrency import run_in_threadpool
 
 from app.core.config import Settings, get_settings
 from app.core.security import CurrentUser, require_csrf, require_roles
@@ -55,7 +56,8 @@ async def upload_document(
     data, ext, content_type = await read_upload(
         request, filename, ALLOWED_TYPES, max_mb=5
     )
-    save_file(
+    await run_in_threadpool(
+        save_file,
         db,
         field=doc_type,
         data=data,
@@ -82,6 +84,8 @@ async def upload_document(
         "SELECT verification_status FROM users WHERE id = ?", (current_user.id,)
     ).fetchone()[0]
     return {
-        **item_meta(get_active_item(db, field=doc_type, owner_user_id=current_user.id)),
+        **item_meta(
+            db, get_active_item(db, field=doc_type, owner_user_id=current_user.id)
+        ),
         "verification_status": verification_status,
     }

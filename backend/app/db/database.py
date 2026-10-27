@@ -5,8 +5,9 @@ from contextlib import closing
 from pathlib import Path
 
 
-# Skema plaintext (tanpa enkripsi). Ganti ke "migrations" saat modul kripto siap.
-MIGRATIONS = Path(__file__).with_name("migrations_before_crypto")
+# Skema versi kripto (tabel `ciphertexts`, `users.email_index`). Skema plaintext lama
+# masih ada di "migrations_before_crypto" sebagai arsip, tidak lagi dijalankan.
+MIGRATIONS = Path(__file__).with_name("migrations")
 
 
 def connect_db(database_path: str | Path) -> sqlite3.Connection:
@@ -19,10 +20,21 @@ def connect_db(database_path: str | Path) -> sqlite3.Connection:
     return connection
 
 
+def _reject_plaintext_database(connection: sqlite3.Connection) -> None:
+    """Database dari skema plaintext lama tidak bisa dipakai tanpa konversi data."""
+    columns = {row["name"] for row in connection.execute("PRAGMA table_info(users)")}
+    if "email" in columns and "email_index" not in columns:
+        raise RuntimeError(
+            "Database ini masih berskema plaintext (users.email). Hapus file database "
+            "(data/ dan storage/) lalu jalankan ulang, atau konversi datanya dulu."
+        )
+
+
 def migrate_db(database_path: str | Path) -> None:
     """Apply pending numbered SQL migrations to the database."""
     Path(database_path).parent.mkdir(parents=True, exist_ok=True)
     with closing(connect_db(database_path)) as connection:
+        _reject_plaintext_database(connection)
         current = connection.execute("PRAGMA user_version").fetchone()[0]
         migrations = sorted(MIGRATIONS.glob("[0-9][0-9][0-9]_*.sql"))
         versions = [int(path.name.split("_", 1)[0]) for path in migrations]

@@ -2,17 +2,25 @@
 
 import sqlite3
 import re
-from urllib.parse import unquote
+from urllib.parse import quote, unquote
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, Header
-from fastapi.responses import FileResponse
 from pydantic import BaseModel, field_validator
 from starlette import status
+from starlette.concurrency import run_in_threadpool
 
 from app.core.config import Settings, get_settings
 from app.core.security import CurrentUser, get_current_user, require_csrf
 from app.db.audit import log_action
-from app.db.items import get_active_item, get_item, save_file, write_item
+from app.db.items import (
+    get_active_item,
+    get_item,
+    read_file,
+    read_original_filename,
+    read_text,
+    save_file,
+    write_item,
+)
 from app.db.settings_store import get_setting, is_past_deadline
 from app.dependencies import get_db, read_upload
 from app.db.views import item_meta, team_data
@@ -78,7 +86,8 @@ async def upload_proposal(
     data, ext, content_type = await read_upload(
         request, filename, {"pdf": "application/pdf"}, max_mb=10
     )
-    save_file(
+    await run_in_threadpool(
+        save_file,
         db,
         field="proposal",
         data=data,
@@ -88,7 +97,9 @@ async def upload_proposal(
         owner_team_id=team["id"],
         original_filename=filename,
     )
-    return item_meta(get_active_item(db, field="proposal", owner_team_id=team["id"]))
+    return item_meta(
+        db, get_active_item(db, field="proposal", owner_team_id=team["id"])
+    )
 
 
 @router.post("/teams/me/video", status_code=status.HTTP_201_CREATED)
@@ -105,7 +116,8 @@ async def upload_video(
     data, ext, content_type = await read_upload(
         request, filename, {"mp4": "video/mp4"}, max_mb=100
     )
-    save_file(
+    await run_in_threadpool(
+        save_file,
         db,
         field="video",
         data=data,
@@ -115,7 +127,7 @@ async def upload_video(
         owner_team_id=team["id"],
         original_filename=filename,
     )
-    return item_meta(get_active_item(db, field="video", owner_team_id=team["id"]))
+    return item_meta(db, get_active_item(db, field="video", owner_team_id=team["id"]))
 
 
 @router.put("/teams/me/repo")
@@ -169,9 +181,28 @@ def submit_final(
     }
 
 
+def _content_disposition(kind: str, filename: str) -> str:
+    ascii_name = filename.encode("ascii", "ignore").decode().replace('"', "") or "file"
+    return f"{kind}; filename=\"{ascii_name}\"; filename*=utf-8''{quote(filename)}"
+
+
+def _parse_range(header: str | None, size: int) -> tuple[int, int] | None:
+    """Range `bytes=a-b` tunggal -> (awal, akhir) inklusif; None kalau tidak ada/tak valid."""
+    match = re.fullmatch(r"bytes=(\d*)-(\d*)", (header or "").strip())
+    if not match or not any(match.groups()):
+        return None
+    first, last = match.groups()
+    if first == "":  # suffix: N byte terakhir
+        start, end = max(size - int(last), 0), size - 1
+    else:
+        start, end = int(first), min(int(last) if last else size - 1, size - 1)
+    return (start, end) if 0 <= start <= end < size else None
+
+
 @router.get("/items/{item_id}")
 def open_item(
     item_id: str,
+    request: Request,
     download: bool = False,
     current_user: CurrentUser = Depends(get_current_user),
     db: sqlite3.Connection = Depends(get_db),
@@ -213,16 +244,30 @@ def open_item(
             subject_user_id=item["owner_user_id"],
         )
 
+    headers = {"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"}
     if item["storage"] == "db":
         return Response(
-            item["value"],
-            media_type="text/plain",
-            headers={"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"},
+            read_text(db, item_id), media_type="text/plain", headers=headers
         )
-    return FileResponse(
-        settings.storage_dir_abs / item["path"],
-        media_type=item["content_type"],
-        filename=item["original_filename"] or item["path"],
-        content_disposition_type="attachment" if download else "inline",
-        headers={"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"},
+
+    # File dibaca dari storage/ lalu didekripsi (HMAC diverifikasi) sebelum dikirim.
+    data = read_file(db, item_id, settings.storage_dir_abs)
+    filename = read_original_filename(db, item_id) or item["field"]
+    headers["Content-Disposition"] = _content_disposition(
+        "attachment" if download else "inline", filename
     )
+    headers["Accept-Ranges"] = "bytes"
+    if request.headers.get("range"):
+        byte_range = _parse_range(request.headers["range"], len(data))
+        if byte_range is None:
+            headers["Content-Range"] = f"bytes */{len(data)}"
+            return Response(status_code=416, headers=headers)
+        start, end = byte_range
+        headers["Content-Range"] = f"bytes {start}-{end}/{len(data)}"
+        return Response(
+            data[start : end + 1],
+            status_code=206,
+            media_type=item["content_type"],
+            headers=headers,
+        )
+    return Response(data, media_type=item["content_type"], headers=headers)

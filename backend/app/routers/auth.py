@@ -1,7 +1,6 @@
 """Modul Auth: registrasi, login, logout, profil singkat (README § Fitur dan aturan bisnis)."""
 
 import sqlite3
-from uuid import uuid4
 
 from argon2.exceptions import VerifyMismatchError
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
@@ -19,6 +18,7 @@ from app.core.security import (
     set_session_cookies,
 )
 from app.dependencies import get_db
+from app.db.users import create_user, email_index, email_taken
 from app.db.views import me_data
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -46,18 +46,17 @@ def register(
     db: sqlite3.Connection = Depends(get_db),
     settings: Settings = Depends(get_settings),
 ) -> dict:
-    email = body.email.strip().lower()
-    existing = db.execute("SELECT id FROM users WHERE email = ?", (email,)).fetchone()
-    if existing is not None:
+    if email_taken(db, body.email):
         raise HTTPException(
             status.HTTP_409_CONFLICT,
             {"code": "email_taken", "message": "Email sudah terdaftar"},
         )
 
-    user_id = str(uuid4())
-    db.execute(
-        "INSERT INTO users (id, email, password_hash, role) VALUES (?, ?, ?, 'peserta')",
-        (user_id, email, password_hasher.hash(body.password)),
+    user_id = create_user(
+        db,
+        email=body.email,
+        password_hash=password_hasher.hash(body.password),
+        role="peserta",
     )
     set_session_cookies(response, settings, user_id=user_id, role="peserta")
     return {"user": me_data(db, user_id)}
@@ -73,8 +72,8 @@ def login(
     settings: Settings = Depends(get_settings),
 ) -> dict:
     row = db.execute(
-        "SELECT id, password_hash, role, verification_status, must_change_password FROM users WHERE email = ? AND disabled = 0",
-        (body.email.strip().lower(),),
+        "SELECT id, password_hash, role, verification_status, must_change_password FROM users WHERE email_index = ? AND disabled = 0",
+        (email_index(body.email),),
     ).fetchone()
     if row is None:
         raise HTTPException(
