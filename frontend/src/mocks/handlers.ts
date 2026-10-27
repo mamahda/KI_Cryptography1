@@ -7,7 +7,6 @@ import {
   type AdminTeamListItem,
   type AuditAction,
   type AuditLogItem,
-  type BenchmarkRow,
   type ConsentInfo,
   type DocumentType,
   type FinalizeMissingItem,
@@ -578,7 +577,7 @@ const DEFAULT_JURI_CREATED_AT = '2026-10-20T09:00:00+07:00'
 function createInitialAuditLogs(): AuditLogItem[] {
   return [
     {
-      id: 503,
+      id: '503',
       actor_id: 'e4d3c2b1-a098-4765-8432-10fedcba9876',
       actor_email: 'juri1@panitia.id',
       actor_role: 'juri',
@@ -588,7 +587,7 @@ function createInitialAuditLogs(): AuditLogItem[] {
       created_at: '2026-10-26T09:30:00+07:00',
     },
     {
-      id: 502,
+      id: '502',
       actor_id: 'a0000000-0000-4000-8000-000000000001',
       actor_email: 'admin@panitia.id',
       actor_role: 'superadmin',
@@ -598,7 +597,7 @@ function createInitialAuditLogs(): AuditLogItem[] {
       created_at: '2026-10-25T14:05:00+07:00',
     },
     {
-      id: 501,
+      id: '501',
       actor_id: 'a0000000-0000-4000-8000-000000000001',
       actor_email: 'admin@panitia.id',
       actor_role: 'superadmin',
@@ -608,7 +607,7 @@ function createInitialAuditLogs(): AuditLogItem[] {
       created_at: '2026-10-24T08:00:00+07:00',
     },
     {
-      id: 500,
+      id: '500',
       actor_id: null,
       actor_email: null,
       actor_role: null,
@@ -879,7 +878,7 @@ function recordAuditLog(
   extra: { item_id?: string | null; subject_user_id?: string | null } = {},
 ): void {
   mockState.auditLogs.unshift({
-    id: ++mockState.nextAuditId,
+    id: String(++mockState.nextAuditId),
     actor_id: actor?.user.id ?? null,
     actor_email: actor?.user.email ?? null,
     actor_role: actor?.user.role ?? null,
@@ -933,7 +932,7 @@ function isRegistrationDeadlinePassed(): boolean {
 }
 
 function isSubmissionDeadlinePassed(): boolean {
-  const targetMs = Date.parse(mockState.settings.submission_deadline)
+  const targetMs = Date.parse(mockState.settings.submission_deadline ?? '')
   return !Number.isNaN(targetMs) && Date.now() > targetMs
 }
 
@@ -2714,38 +2713,15 @@ export const handlers = [
     }
 
     const url = new URL(request.url)
-    const operation = url.searchParams.get('operation')
-    const source = url.searchParams.get('source')
-
-    // Shape-only sample data, as the contract says of its own example:
-    // "Angka di contoh hanya menunjukkan format, bukan hasil."
-    const base: Array<BenchmarkRow & { source: string }> = [
-      { cipher: 'aes', operation: 'enc', size_bytes: 5_242_880, n: 30, median_ns: 6_050_000, q1_ns: 5_900_000, q3_ns: 6_400_000, median_mb_s: 826.4, source: 'controlled' },
-      { cipher: 'des', operation: 'enc', size_bytes: 5_242_880, n: 30, median_ns: 92_400_000, q1_ns: 90_100_000, q3_ns: 96_800_000, median_mb_s: 54.1, source: 'controlled' },
-      { cipher: 'rc4', operation: 'enc', size_bytes: 5_242_880, n: 30, median_ns: 18_700_000, q1_ns: 18_200_000, q3_ns: 19_500_000, median_mb_s: 267.4, source: 'controlled' },
-      { cipher: 'aes', operation: 'dec', size_bytes: 5_242_880, n: 30, median_ns: 6_120_000, q1_ns: 5_980_000, q3_ns: 6_510_000, median_mb_s: 816.9, source: 'controlled' },
-      { cipher: 'des', operation: 'dec', size_bytes: 5_242_880, n: 30, median_ns: 93_100_000, q1_ns: 91_000_000, q3_ns: 97_400_000, median_mb_s: 53.7, source: 'controlled' },
-      { cipher: 'rc4', operation: 'dec', size_bytes: 5_242_880, n: 30, median_ns: 18_900_000, q1_ns: 18_400_000, q3_ns: 19_800_000, median_mb_s: 264.6, source: 'controlled' },
-      { cipher: 'aes', operation: 'hmac', size_bytes: 5_242_880, n: 30, median_ns: 11_400_000, q1_ns: 11_100_000, q3_ns: 12_000_000, median_mb_s: 438.6, source: 'controlled' },
-      { cipher: 'aes', operation: 'enc', size_bytes: 104_857_600, n: 30, median_ns: 124_000_000, q1_ns: 121_000_000, q3_ns: 131_000_000, median_mb_s: 806.5, source: 'live' },
-      { cipher: 'des', operation: 'enc', size_bytes: 104_857_600, n: 30, median_ns: 1_880_000_000, q1_ns: 1_840_000_000, q3_ns: 1_960_000_000, median_mb_s: 53.2, source: 'live' },
-      { cipher: 'rc4', operation: 'enc', size_bytes: 104_857_600, n: 30, median_ns: 381_000_000, q1_ns: 372_000_000, q3_ns: 398_000_000, median_mb_s: 262.5, source: 'live' },
-    ]
-
-    const rows: BenchmarkRow[] = base
-      .filter((row) => !operation || row.operation === operation)
-      .filter((row) => !source || row.source === source)
-      .map(({ source: _source, ...row }) => row)
+    const source = url.searchParams.get('source') === 'live' ? 'live' : 'controlled'
 
     return HttpResponse.json(
       {
-        env: {
-          cpu: 'Mock CPU (AES-NI Enabled)',
-          aes_ni: true,
-          python: '3.12.4',
-          pycryptodome: '3.21.0',
-        },
-        rows,
+        run_id: null,
+        source,
+        runs: [],
+        env: null,
+        rows: [],
       },
       { status: 200 },
     )

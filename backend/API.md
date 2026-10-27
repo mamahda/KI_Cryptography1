@@ -9,7 +9,7 @@ Path dan method mengikuti PRD PDF halaman 37–39. Semua route memakai prefix `/
 - Upload: body mentah `application/octet-stream`, nama file melalui `X-Filename: encodeURIComponent(filename)`. Respons JSON metadata, bukan 204.
 - `ItemMeta = {item_id, field, content_type, size_bytes, original_filename, uploaded_at}`.
 - Pagination: query `page` (mulai 1), `page_size` (1–100); respons `{items, page, page_size, total}`.
-- Penyimpanan masih plaintext melalui `migrations_before_crypto`; enkripsi/HMAC dan streaming enkripsi belum diimplementasikan. Upload masih memeriksa ekstensi dan ukuran.
+- Penyimpanan menggunakan ciphertext melalui `crypto_services` dan migration `migrations/`. Upload masih memeriksa ekstensi dan ukuran; streaming enkripsi belum tersedia.
 
 ## Akun dan privasi
 
@@ -85,10 +85,10 @@ Hanya tim final yang ditugaskan. Pembukaan item juga memeriksa penugasan. Juri t
 | GET | `/api/admin/settings` | Pengaturan publik, versi dan teks kebijakan |
 | PUT | `/api/admin/settings` | Subset pengaturan → pengaturan publik terbaru |
 | GET | `/api/admin/audit-logs` | Pagination; filter `actor_id, action, from, to` |
-| GET | `/api/admin/benchmarks` | Filter `source, operation`; `{env, rows}` |
+| GET | `/api/admin/benchmarks` | Filter `source, operation, run_id`; `{run_id, source, env, rows, runs}` |
 
 Pengaturan: `registration_deadline, submission_deadline, min_team_size, max_team_size, privacy_policy_version, privacy_policy_text`. Tenggat boleh null; ukuran tim default 2–4. Setting lama `deadline_at` dan `max_team_members` tetap dibaca sebagai fallback. ID audit berupa string UUID.
 
-Benchmark merangkum data nyata di `benchmark_runs`: jumlah sampel, median, Q1/Q3, throughput. Tanpa data, `env` null dan `rows` kosong; endpoint ini tidak membuat pengukuran.
+Benchmark merangkum satu run pada satu source; default source `controlled` dan run terbaru. Tanpa data, `run_id` dan `env` null, `rows` dan `runs` kosong. Durasi memakai ns; throughput memakai MB/s desimal dan menyediakan median/Q1/Q3 tersendiri. Throughput `wrap` null. Pencatatan live otomatis, sedangkan controlled dihasilkan melalui CLI. Kontrak lengkap untuk frontend dan cara menjalankan ada di [BENCHMARK_FRONTEND.md](BENCHMARK_FRONTEND.md).
 
 Pengaturan publik, daftar dokumen, daftar tim admin, dan daftar juri adalah endpoint tambahan untuk frontend. Kontrak TypeScript lengkap ada di `frontend/src/api/types.ts`.
