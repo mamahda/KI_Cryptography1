@@ -148,7 +148,7 @@ python -c "import secrets; print(secrets.token_urlsafe(32))"                    
 
 ## Model data
 
-SQLite menyimpan sembilan tabel; inti enkripsinya adalah `items` (satu baris per data atau file) dan `ciphertexts` (tiga baris per item, satu per cipher).
+SQLite menyimpan tabel akun, tim, data terenkripsi, akses, dan benchmark; inti enkripsinya adalah `items` (satu baris per data atau file) dan `ciphertexts` (tiga baris per item, satu per cipher). Migration ada di `backend/database/migrations/`; terapkan semua migration yang belum berjalan dengan `python -c "from backend.database.database import migrate_db; migrate_db('data/schematics.db')"`. Setiap perubahan skema baru dibuat sebagai file SQL bernomor berikutnya; migration yang sudah diterapkan jangan diedit.
 
 | Tabel | Kolom penting | Catatan |
 | --- | --- | --- |
@@ -157,10 +157,12 @@ SQLite menyimpan sembilan tabel; inti enkripsinya adalah `items` (satu baris per
 | `teams` | id, team_code (unik), leader_id, status (draft/final), created_at, finalized_at | Nama tim disimpan sebagai item |
 | `team_members` | team_id, user_id (unik), joined_at | Satu peserta hanya di satu tim |
 | `items` | id (UUID), owner_user_id atau owner_team_id, field, storage (db/fs), content_type, size_bytes, created_at | Satu item aktif per pemilik dan field |
-| `ciphertexts` | id, item_id, cipher (aes/des/rc4), nonce, wrap_nonce, wrapped_keys, key_version, hmac_tag, blob atau path | UNIQUE (item_id, cipher); field teks di blob, file di path |
+| `ciphertexts` | id, item_id, cipher (aes/des/rc4), nonce, wrap_nonce, wrapped_keys, wrap_tag, key_version, hmac_tag, blob atau path | UNIQUE (item_id, cipher); field teks di blob, file di path |
+| `juri_assignments` | juri_id, team_id, assigned_by, assigned_at | Membatasi akses juri ke tim yang ditugaskan |
 | `audit_logs` | id, actor_id, action, item_id, subject_user_id, created_at | Tanpa isi data pribadi |
 | `benchmark_runs` | id, cipher, operation (enc/dec/hmac), field, size_bytes, duration_ns, source (live/controlled), env, created_at | env mencatat CPU, AES-NI, versi Python dan PyCryptodome |
 | `settings` | key, value | Tenggat, batas anggota, versi kebijakan privasi |
+| `verification_events` | id, user_id, admin_id, decision, reason_code, note_item_id, created_at | Riwayat keputusan verifikasi |
 
 Nilai `field`: `email`, `full_name`, `nim`, `study_program`, `institution`, `birth_date`, `domicile`, `phone`, `ktp`, `ktm`, `twibbon`, `team_name`, `proposal`, `video`, `repo_url`, `original_filename`, `verification_note`.
 
