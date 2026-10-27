@@ -549,13 +549,25 @@ export type AdminAuditLogsResponse = PaginatedResponse<AuditLogItem>
 export interface AdminBenchmarksQueryParams {
   source?: BenchmarkSource
   operation?: BenchmarkOperation
+  run_id?: string
 }
 
 export interface BenchmarkEnv {
   cpu: string
-  aes_ni: boolean
+  aes_ni: boolean | null
   python: string
   pycryptodome: string
+  os?: string
+  protocol?: string
+  repeats?: number
+  warmup?: number
+  sizes_bytes?: number[]
+  parameters?: Record<CipherType, {
+    key_bits: number
+    nonce_bytes: number
+    hmac: boolean
+    drop_bytes?: number
+  }>
 }
 
 export interface BenchmarkRow {
@@ -566,12 +578,24 @@ export interface BenchmarkRow {
   median_ns: number
   q1_ns: number
   q3_ns: number
-  median_mb_s: number
+  median_mb_s: number | null
+  q1_mb_s: number | null
+  q3_mb_s: number | null
+  sufficient_samples: boolean
+}
+
+export interface BenchmarkRun {
+  run_id: string
+  created_at: string
+  sample_count: number
 }
 
 export interface AdminBenchmarksResponse {
+  run_id: string | null
+  source: BenchmarkSource
   env: BenchmarkEnv | null
   rows: BenchmarkRow[]
+  runs: BenchmarkRun[]
 }
 
 /* -------------------------------------------------------------------------- */

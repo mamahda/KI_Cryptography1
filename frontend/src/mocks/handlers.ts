@@ -791,7 +791,7 @@ function isRegistrationDeadlinePassed(): boolean {
 }
 
 function isSubmissionDeadlinePassed(): boolean {
-  const targetMs = Date.parse(mockState.settings.submission_deadline)
+  const targetMs = Date.parse(mockState.settings.submission_deadline ?? '')
   return !Number.isNaN(targetMs) && Date.now() > targetMs
 }
 
@@ -2124,15 +2124,13 @@ export const handlers = [
     return HttpResponse.json({ team: finalized }, { status: 200 })
   }),
 
-  http.get('*/api/admin/benchmarks', () => {
+  http.get('*/api/admin/benchmarks', ({ request }) => {
     return HttpResponse.json(
       {
-        env: {
-          cpu: 'Mock CPU (AES-NI Enabled)',
-          aes_ni: true,
-          python: '3.12.4',
-          pycryptodome: '3.21.0',
-        },
+        run_id: null,
+        source: new URL(request.url).searchParams.get('source') === 'live' ? 'live' : 'controlled',
+        runs: [],
+        env: null,
         rows: [],
       },
       { status: 200 },
