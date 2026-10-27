@@ -70,7 +70,7 @@ def _pick_row(rows: list[sqlite3.Row], cipher: str | None) -> sqlite3.Row:
         if cipher not in by_cipher:
             raise CiphertextNotFound(f"Tidak ada ciphertext '{cipher}'")
         return by_cipher[cipher]
-    for name in (crypto.primary_cipher, *crypto.ciphers, *by_cipher):
+    for name in (*crypto.ciphers, *by_cipher):
         if name in by_cipher:
             return by_cipher[name]
     raise CiphertextNotFound("Item tidak punya ciphertext")
@@ -83,7 +83,6 @@ def load_plaintext(
     storage_dir: Path | None = None,
     cipher: str | None = None,
 ) -> bytes:
-    """Baca dan dekripsi item. Default memakai cipher utama (CRYPTO_PRIMARY_CIPHER)."""
     rows = db.execute("SELECT * FROM ciphertexts WHERE item_id = ?", (item_id,)).fetchall()
     row = _pick_row(rows, cipher)
     data = row["blob"] if row["path"] is None else (storage_dir / row["path"]).read_bytes()

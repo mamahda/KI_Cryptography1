@@ -4,7 +4,7 @@ Modul ini murni kripto: tidak mengimpor FastAPI, SQLite, maupun konfigurasi
 aplikasi. Penyimpanan hasilnya (tabel `ciphertexts`) ada di `app/db/ciphertexts.py`.
 
 Lapisan:
-  aes256_ctr_hmac.py / des_ctr_hmac.py / rc4.py   fungsi encrypt() & decrypt() per metode
+  aes256_ctr_hmac.py / des_ctr_hmac.py / rc4.py (+HMAC)   fungsi encrypt() & decrypt() per metode
   base.py        kontrak CipherSuite & EncryptedPayload
   registry.py    nama cipher -> CipherSuite
   keyring.py     turunan KEK & kunci blind index dari ROOT_KEY

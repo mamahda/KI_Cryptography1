@@ -18,10 +18,9 @@ class Settings(BaseSettings):
     # Kunci induk untuk modul crypto_services (wajib, minimal 32 karakter).
     root_key: str | None = None
     root_key_version: int = 1
-    # Cipher yang dipakai menyimpan tiap item (satu baris `ciphertexts` per cipher)
-    # dan cipher yang dipakai membacanya kembali.
+    # Cipher yang dipakai menyimpan tiap item (satu baris `ciphertexts` per cipher).
+    # Saat membaca dipakai cipher pertama dalam daftar ini yang tersedia.
     crypto_ciphers: str = "aes,des,rc4"
-    crypto_primary_cipher: str = "aes"
     jwt_secret_key: str
     jwt_cookie_secure: bool = False
 

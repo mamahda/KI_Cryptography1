@@ -1,4 +1,4 @@
-"""HMAC-SHA256 untuk skema encrypt-then-MAC (dipakai AES dan DES).
+"""HMAC-SHA256 untuk skema encrypt-then-MAC (dipakai AES, DES, dan RC4).
 
 Yang diautentikasi: panjang AAD + AAD + nonce + ciphertext. Panjang AAD
 disertakan supaya batas antara AAD dan nonce tidak ambigu.

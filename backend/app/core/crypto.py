@@ -8,11 +8,9 @@ from app.crypto_services import CryptoService, KeyConfigError
 
 @lru_cache
 def _build(
-    root_key: str, version: int, ciphers: tuple[str, ...], primary: str
+    root_key: str, version: int, ciphers: tuple[str, ...]
 ) -> CryptoService:
-    return CryptoService(
-        root_key, key_version=version, ciphers=ciphers, primary_cipher=primary
-    )
+    return CryptoService(root_key, key_version=version, ciphers=ciphers)
 
 
 def get_crypto_service() -> CryptoService:
@@ -24,5 +22,4 @@ def get_crypto_service() -> CryptoService:
         settings.root_key,
         settings.root_key_version,
         tuple(settings.crypto_cipher_list),
-        settings.crypto_primary_cipher.strip().lower(),
     )
