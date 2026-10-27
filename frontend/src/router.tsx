@@ -1,6 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { LogOut, ShieldCheck } from 'lucide-react'
-import { BrowserRouter, Link, Navigate, Outlet, Route, Routes, useNavigate } from 'react-router-dom'
+import {
+  BrowserRouter,
+  Link,
+  Navigate,
+  Outlet,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+} from 'react-router-dom'
 import { apiClient, type PublicSettings } from './api'
 import {
   ConsentGuard,
@@ -18,8 +27,12 @@ import { useUiStore } from './stores/uiStore'
 function AppShellLayout() {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
+  const location = useLocation()
   const user = useAuthStore((state) => state.user)
   const notices = useUiStore((state) => state.notices)
+
+  const isFullBleedCanvasRoute =
+    location.pathname === '/login' || location.pathname === '/register'
 
   const logoutMutation = useMutation({
     mutationFn: apiClient.auth.logout,
@@ -31,21 +44,23 @@ function AppShellLayout() {
   })
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
-      <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3">
-          <Link to="/" className="flex items-center gap-2 font-semibold text-slate-900">
-            <ShieldCheck className="h-5 w-5 text-indigo-600" aria-hidden="true" />
-            <span>Schematics NIC</span>
+    <div className="min-h-screen bg-black text-zinc-100">
+      <header className="sticky top-0 z-20 border-b border-[#222] bg-black/85 backdrop-blur-md">
+        <div className="mx-auto flex min-h-14 max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-2.5">
+          <Link to="/" className="flex items-center gap-2 font-semibold text-white">
+            <span className="flex h-7 w-7 items-center justify-center rounded-full border border-[#333] bg-[#111]">
+              <ShieldCheck className="h-4 w-4 text-zinc-100" aria-hidden="true" />
+            </span>
+            <span className="tracking-tight">Schematics NIC</span>
           </Link>
 
           <nav aria-label="Primary navigation" className="flex flex-wrap items-center gap-4 text-sm">
             {!user && (
               <>
-                <Link to="/login" className="text-slate-600 hover:text-slate-900">
+                <Link to="/login" className="text-zinc-400 transition hover:text-white">
                   Login
                 </Link>
-                <Link to="/register" className="text-slate-600 hover:text-slate-900">
+                <Link to="/register" className="text-zinc-400 transition hover:text-white">
                   Register
                 </Link>
               </>
@@ -53,22 +68,25 @@ function AppShellLayout() {
 
             {user?.role === 'peserta' && (
               <>
-                <Link to="/dashboard" className="text-slate-600 hover:text-slate-900">
+                <Link to="/dashboard" className="text-zinc-400 transition hover:text-white">
                   Dashboard
                 </Link>
-                <Link to="/profile" className="text-slate-600 hover:text-slate-900">
+                <Link to="/profile" className="text-zinc-400 transition hover:text-white">
                   Profile
                 </Link>
-                <Link to="/documents" className="text-slate-600 hover:text-slate-900">
+                <Link to="/documents" className="text-zinc-400 transition hover:text-white">
                   Documents
                 </Link>
-                <Link to="/team" className="text-slate-600 hover:text-slate-900">
+                <Link to="/team" className="text-zinc-400 transition hover:text-white">
                   Team Workspace
                 </Link>
-                <Link to="/video" className="text-slate-600 hover:text-slate-900">
+                <Link to="/video" className="text-zinc-400 transition hover:text-white">
                   Video Upload
                 </Link>
-                <Link to="/encryption-inspector" className="text-slate-600 hover:text-slate-900">
+                <Link
+                  to="/encryption-inspector"
+                  className="text-zinc-400 transition hover:text-white"
+                >
                   Encryption Inspector
                 </Link>
               </>
@@ -76,10 +94,13 @@ function AppShellLayout() {
 
             {user?.role === 'juri' && (
               <>
-                <Link to="/juri/teams" className="text-slate-600 hover:text-slate-900">
+                <Link to="/juri/teams" className="text-zinc-400 transition hover:text-white">
                   Juri
                 </Link>
-                <Link to="/encryption-inspector" className="text-slate-600 hover:text-slate-900">
+                <Link
+                  to="/encryption-inspector"
+                  className="text-zinc-400 transition hover:text-white"
+                >
                   Encryption Inspector
                 </Link>
               </>
@@ -87,25 +108,31 @@ function AppShellLayout() {
 
             {user?.role === 'superadmin' && (
               <>
-                <Link to="/admin/participants" className="text-slate-600 hover:text-slate-900">
+                <Link
+                  to="/admin/participants"
+                  className="text-zinc-400 transition hover:text-white"
+                >
                   Superadmin
                 </Link>
-                <Link to="/admin/teams" className="text-slate-600 hover:text-slate-900">
+                <Link to="/admin/teams" className="text-zinc-400 transition hover:text-white">
                   Teams
                 </Link>
-                <Link to="/admin/juri" className="text-slate-600 hover:text-slate-900">
+                <Link to="/admin/juri" className="text-zinc-400 transition hover:text-white">
                   Juri Accounts
                 </Link>
-                <Link to="/admin/settings" className="text-slate-600 hover:text-slate-900">
+                <Link to="/admin/settings" className="text-zinc-400 transition hover:text-white">
                   Settings
                 </Link>
-                <Link to="/admin/audit-logs" className="text-slate-600 hover:text-slate-900">
+                <Link to="/admin/audit-logs" className="text-zinc-400 transition hover:text-white">
                   Audit Logs
                 </Link>
-                <Link to="/admin/benchmarks" className="text-slate-600 hover:text-slate-900">
+                <Link to="/admin/benchmarks" className="text-zinc-400 transition hover:text-white">
                   Benchmarks
                 </Link>
-                <Link to="/encryption-inspector" className="text-slate-600 hover:text-slate-900">
+                <Link
+                  to="/encryption-inspector"
+                  className="text-zinc-400 transition hover:text-white"
+                >
                   Encryption Inspector
                 </Link>
               </>
@@ -113,7 +140,7 @@ function AppShellLayout() {
           </nav>
 
           <div className="flex items-center gap-3">
-            <div className="text-xs text-slate-500" data-testid="session-badge">
+            <div className="text-xs text-zinc-400" data-testid="session-badge">
               {user ? `${user.email} (${user.role})` : 'Guest'}
             </div>
             {user && (
@@ -121,7 +148,7 @@ function AppShellLayout() {
                 type="button"
                 onClick={() => logoutMutation.mutate()}
                 disabled={logoutMutation.isPending}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-[#333] bg-[#121212] px-2.5 py-1.5 text-xs font-medium text-zinc-200 transition hover:border-zinc-500 hover:text-white disabled:opacity-50"
               >
                 <LogOut className="h-3.5 w-3.5" aria-hidden="true" />
                 Keluar
@@ -136,7 +163,7 @@ function AppShellLayout() {
           {notices.map((notice) => (
             <div
               key={notice.id}
-              className="mb-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700"
+              className="mb-2 rounded-lg border border-[#333] bg-[#121212] px-4 py-2 text-sm text-zinc-200"
             >
               {notice.message}
             </div>
@@ -144,9 +171,15 @@ function AppShellLayout() {
         </div>
       )}
 
-      <main className="mx-auto max-w-6xl px-4 py-8">
-        <Outlet />
-      </main>
+      {isFullBleedCanvasRoute ? (
+        <main className="w-full">
+          <Outlet />
+        </main>
+      ) : (
+        <main className="mx-auto max-w-6xl px-4 py-8">
+          <Outlet />
+        </main>
+      )}
     </div>
   )
 }
@@ -159,49 +192,49 @@ function WorkspaceHome() {
   })
 
   return (
-    <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-xs">
+    <section className="rounded-xl border border-[#222] bg-[#121212] p-6 shadow-[0_10px_40px_rgba(0,0,0,0.8)] sm:p-8">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-2xl font-bold text-slate-900">
+        <h1 className="text-2xl font-bold tracking-tight text-white">
           Platform Pendaftaran Schematics NIC
         </h1>
         <span
           data-testid="api-mode-badge"
-          className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700"
+          className="rounded-full border border-[#333] bg-black px-3 py-1 text-xs font-medium text-zinc-200"
         >
           {env.enableMsw ? 'MSW Mock Mode' : 'API Proxy Mode'}
         </span>
       </div>
-      <p className="mt-2 text-sm text-slate-600">
+      <p className="mt-2 text-sm text-zinc-400">
         Triple-cipher encrypted registration &amp; submission workspace (AES-CTR, DES-CTR, RC4 +
         HMAC-SHA256).
       </p>
 
-      <div className="mt-4 rounded-lg bg-slate-50 p-4 text-sm text-slate-700">
-        {isLoading && <p>Loading competition settings...</p>}
+      <div className="mt-5 rounded-lg border border-[#222] bg-black p-4 text-sm text-zinc-300">
+        {isLoading && <p className="text-zinc-400">Loading competition settings...</p>}
         {isError && (
-          <p className="text-amber-700">
+          <p className="text-amber-300">
             Backend API not yet reachable on <code>/api/settings</code> (start Flask or run with{' '}
             <code>VITE_ENABLE_MSW=true</code>).
           </p>
         )}
         {data && (
-          <dl className="grid gap-2 sm:grid-cols-3" data-testid="settings-summary">
+          <dl className="grid gap-3 sm:grid-cols-3" data-testid="settings-summary">
             <div>
-              <dt className="text-xs text-slate-500">Team Size</dt>
-              <dd className="font-medium">
+              <dt className="text-xs text-zinc-500">Team Size</dt>
+              <dd className="mt-0.5 font-medium text-white">
                 {data.min_team_size}–{data.max_team_size} members
               </dd>
             </div>
             <div>
-              <dt className="text-xs text-slate-500">Max Document / Proposal</dt>
-              <dd className="font-medium">
+              <dt className="text-xs text-zinc-500">Max Document / Proposal</dt>
+              <dd className="mt-0.5 font-medium text-white">
                 {Math.round(data.limits.document_max_bytes / 1_048_576)} MB /{' '}
                 {Math.round(data.limits.proposal_max_bytes / 1_048_576)} MB
               </dd>
             </div>
             <div>
-              <dt className="text-xs text-slate-500">Max Demo Video</dt>
-              <dd className="font-medium">
+              <dt className="text-xs text-zinc-500">Max Demo Video</dt>
+              <dd className="mt-0.5 font-medium text-white">
                 {Math.round(data.limits.video_max_bytes / 1_048_576)} MB
               </dd>
             </div>
@@ -209,18 +242,18 @@ function WorkspaceHome() {
         )}
       </div>
 
-      <div className="mt-5 flex flex-wrap gap-3">
+      <div className="mt-6 flex flex-wrap gap-3">
         {!user ? (
           <>
             <Link
               to="/login"
-              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+              className="rounded-md bg-[#ededed] px-4 py-2 text-sm font-medium text-black transition hover:bg-white"
             >
               Masuk
             </Link>
             <Link
               to="/register"
-              className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              className="rounded-md border border-[#333] bg-black px-4 py-2 text-sm font-medium text-white transition hover:border-zinc-500"
             >
               Daftar Peserta
             </Link>
@@ -234,7 +267,7 @@ function WorkspaceHome() {
                   ? '/admin/participants'
                   : '/dashboard'
             }
-            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+            className="rounded-md bg-[#ededed] px-4 py-2 text-sm font-medium text-black transition hover:bg-white"
           >
             Buka Dashboard
           </Link>
@@ -246,9 +279,9 @@ function WorkspaceHome() {
 
 function RoutePlaceholder({ title, description }: { title: string; description: string }) {
   return (
-    <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-xs">
-      <h1 className="text-xl font-semibold text-slate-900">{title}</h1>
-      <p className="mt-2 text-sm text-slate-600">{description}</p>
+    <section className="rounded-xl border border-[#222] bg-[#121212] p-6 shadow-[0_10px_40px_rgba(0,0,0,0.8)]">
+      <h1 className="text-xl font-semibold text-white">{title}</h1>
+      <p className="mt-2 text-sm text-zinc-400">{description}</p>
     </section>
   )
 }

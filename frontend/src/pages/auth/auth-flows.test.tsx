@@ -1,6 +1,7 @@
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
+import DemoOne from '@/components/ui/demo'
 import { setMockPolicyVersion } from '../../mocks/handlers'
 import { AppRoutes } from '../../router'
 import { useAuthStore } from '../../stores/authStore'
@@ -204,5 +205,24 @@ describe('Authentication, Explicit Privacy Consent & Route Guards', () => {
       ).toBeInTheDocument()
     })
     expect(screen.getByTestId('session-badge')).toHaveTextContent('Guest')
+  })
+
+  it('renders standalone shadcn ModernLoginSignup via DemoOne and toggles login/register modes', async () => {
+    const user = userEvent.setup()
+    useAuthStore.getState().clearSession()
+
+    renderWithProviders(<DemoOne />)
+
+    expect(
+      screen.getByRole('heading', { name: /Masuk ke Schematics NIC/i }),
+    ).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /Daftar sekarang/i }))
+    expect(screen.getByRole('heading', { name: /Daftar Akun Peserta/i })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /Masuk di sini/i }))
+    expect(
+      screen.getByRole('heading', { name: /Masuk ke Schematics NIC/i }),
+    ).toBeInTheDocument()
   })
 })
