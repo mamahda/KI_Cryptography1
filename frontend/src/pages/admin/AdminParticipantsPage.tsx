@@ -1,10 +1,20 @@
 import { useQuery } from '@tanstack/react-query'
-import { AlertCircle, Check, ChevronRight, Inbox, ShieldCheck, X } from 'lucide-react'
+import { AlertCircle, Check, ChevronRight, Inbox, X } from 'lucide-react'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { apiClient, isApiClientError, VERIFICATION_STATUSES, type VerificationStatus } from '@/api'
 import { Pagination } from '@/components/ui/Pagination'
-import { CARD, FOCUS, INPUT, LABEL, TD, TH, WELL } from '@/components/ui/tokens'
+import {
+  CARD,
+  FOCUS,
+  INPUT,
+  LABEL,
+  PAGE_TITLE,
+  SECTION_HEADING,
+  TD,
+  TH,
+  WELL,
+} from '@/components/ui/tokens'
 import { VerificationStatusChip } from '@/components/ui/VerificationStatusChip'
 
 const STATUS_FILTER_LABELS: Record<VerificationStatus, string> = {
@@ -43,23 +53,15 @@ export function AdminParticipantsPage() {
 
   return (
     <div data-testid="admin-participants-page" className="space-y-6">
-      <header className={`${CARD} p-6`}>
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-[#243049] bg-[#0e1626] px-3 py-1 text-xs font-medium text-slate-300">
-          <ShieldCheck className="h-3.5 w-3.5 text-slate-100" aria-hidden="true" />
-          Superadmin
-        </span>
-        <h1 className="mt-2.5 text-2xl font-bold tracking-tight text-white">
+      <header>
+        <h1 className={PAGE_TITLE}>
           Verifikasi Peserta
         </h1>
-        <p className="mt-1.5 max-w-prose text-sm text-slate-400">
-          Buka profil peserta untuk memeriksa dokumen identitasnya, lalu setujui atau tolak
-          pendaftarannya. Setiap pembukaan profil dan setiap keputusan dicatat di audit log.
-        </p>
       </header>
 
       <section className={`${CARD} p-6`} aria-labelledby="queue-heading">
         <div className="flex flex-wrap items-end justify-between gap-4">
-          <h2 id="queue-heading" className="text-lg font-semibold text-white">
+          <h2 id="queue-heading" className={SECTION_HEADING}>
             Antrean verifikasi
           </h2>
 
@@ -85,7 +87,7 @@ export function AdminParticipantsPage() {
         </div>
 
         {participantsQuery.isPending ? (
-          <p data-testid="participants-loading" className="mt-3 text-sm text-slate-400">
+          <p data-testid="participants-loading" className="mt-3 text-sm text-ink-3">
             Memuat antrean peserta...
           </p>
         ) : null}
@@ -110,8 +112,8 @@ export function AdminParticipantsPage() {
             data-testid="participants-empty-state"
             className={`mt-3 ${WELL} flex flex-col items-center gap-2 px-4 py-10 text-center`}
           >
-            <Inbox className="h-6 w-6 text-slate-400" aria-hidden="true" />
-            <p className="text-sm font-medium text-slate-200">Tidak ada peserta pada filter ini</p>
+            <Inbox className="h-6 w-6 text-ink-3" aria-hidden="true" />
+            <p className="text-sm font-medium text-ink-2">Tidak ada peserta pada filter ini</p>
           </div>
         ) : null}
 
@@ -123,7 +125,7 @@ export function AdminParticipantsPage() {
                   Peserta beserta status verifikasi, kelengkapan dokumen, dan timnya
                 </caption>
                 <thead>
-                  <tr className="border-b border-[#243049]">
+                  <tr className="border-b border-edge">
                     <th scope="col" className={TH}>
                       Peserta
                     </th>
@@ -146,17 +148,17 @@ export function AdminParticipantsPage() {
                     <tr
                       key={row.user_id}
                       data-testid={`participant-row-${row.user_id}`}
-                      className="border-b border-[#1e293f] last:border-b-0"
+                      className="border-b border-edge-soft last:border-b-0"
                     >
                       <td className={TD}>
                         <Link
                           to={`/admin/participants/${row.user_id}`}
-                          className={`inline-flex items-center gap-1.5 rounded font-medium text-slate-100 transition hover:text-white ${FOCUS}`}
+                          className={`inline-flex items-center gap-1.5 rounded font-medium text-ink transition hover:text-white ${FOCUS}`}
                         >
                           {row.full_name ?? '(nama belum diisi)'}
-                          <ChevronRight className="h-4 w-4 text-slate-400" aria-hidden="true" />
+                          <ChevronRight className="h-4 w-4 text-ink-3" aria-hidden="true" />
                         </Link>
-                        <span className="mt-0.5 block text-xs break-all text-slate-400">
+                        <span className="mt-0.5 block text-xs break-all text-ink-3">
                           {row.email}
                         </span>
                         {row.is_minor ? (
@@ -174,7 +176,7 @@ export function AdminParticipantsPage() {
                           {row.documents_complete ? (
                             <Check className="h-4 w-4 text-emerald-300" aria-hidden="true" />
                           ) : (
-                            <X className="h-4 w-4 text-slate-400" aria-hidden="true" />
+                            <X className="h-4 w-4 text-ink-3" aria-hidden="true" />
                           )}
                           {row.documents_complete ? 'Lengkap' : 'Belum lengkap'}
                         </span>

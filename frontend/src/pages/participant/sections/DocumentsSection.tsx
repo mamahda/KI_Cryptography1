@@ -27,6 +27,14 @@ import {
 } from '@/api'
 import { formatDeadlineDisplay, useLiveNow } from '@/lib/countdown'
 import { formatBytes, validateDocumentFile } from '@/lib/fileValidation'
+import {
+  SHEET,
+  SHEET_ACTION,
+  SHEET_ACTION_PRIMARY,
+  SHEET_LABEL,
+  SHEET_MUTED,
+  SHEET_TITLE,
+} from '@/components/ui/tokens'
 import { useAuthStore } from '@/stores/authStore'
 
 interface DocumentSlotConfig {
@@ -57,25 +65,26 @@ const DOCUMENT_SLOTS: readonly DocumentSlotConfig[] = [
   },
 ] as const
 
+/** On the white sheet a status is a pale tint under dark text of its own hue. */
 const VERIFICATION_BADGE_STYLES: Record<
   VerificationStatus,
-  { label: string; className: string }
+  { label: string; sheetClassName: string }
 > = {
   belum_lengkap: {
     label: 'Belum Lengkap',
-    className: 'border-zinc-700 bg-zinc-900 text-slate-300',
+    sheetClassName: 'border border-edge bg-well text-ink-2',
   },
   menunggu: {
     label: 'Menunggu Verifikasi',
-    className: 'border-amber-500/40 bg-amber-950/50 text-amber-200',
+    sheetClassName: 'bg-amber-950/50 text-amber-200',
   },
   terverifikasi: {
     label: 'Terverifikasi',
-    className: 'border-emerald-500/40 bg-emerald-950/50 text-emerald-200',
+    sheetClassName: 'bg-emerald-950/50 text-emerald-200',
   },
   ditolak: {
     label: 'Ditolak',
-    className: 'border-rose-500/40 bg-rose-950/50 text-rose-200',
+    sheetClassName: 'bg-rose-950/50 text-rose-200',
   },
 }
 
@@ -396,33 +405,6 @@ export function DocumentsSection() {
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
-      <header className="flex flex-wrap items-start justify-between gap-4 px-1">
-        <div>
-          <h2 className="text-xl font-bold tracking-tight text-white">Document Manager</h2>
-          <p className="mt-1 text-sm text-slate-400">
-            Unggah scan KTP, KTM/KRSM, dan bukti Twibbon (JPG, PNG, atau PDF maksimal{' '}
-            <strong className="font-medium text-slate-200">{formatBytes(maxDocBytes)}</strong>). File
-            dikirim sebagai stream mentah tanpa file plaintext sementara di disk.
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2.5">
-          <span
-            data-testid="documents-progress-pill"
-            className="rounded-full border border-[#243049] bg-[#0e1626] px-3 py-1.5 text-xs font-medium text-slate-200"
-          >
-            {uploadedCount}/3 dokumen terunggah
-          </span>
-          <span
-            data-testid="documents-verification-badge"
-            className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${statusBadge.className}`}
-          >
-            {statusBadge.label}
-          </span>
-        </div>
-      </header>
-
       {/* Profile Incomplete Reminder */}
       {profile && !profile.profile_complete && (
         <section
@@ -438,7 +420,7 @@ export function DocumentsSection() {
           </div>
           <Link
             to="/profile"
-            className="inline-flex items-center gap-1 rounded-xl border border-amber-400/40 bg-[#0e1626] px-3 py-1.5 text-xs font-semibold text-white transition hover:border-amber-300"
+            className="inline-flex items-center gap-1 rounded-xl border border-amber-400/40 bg-well px-3 py-1.5 text-xs font-semibold text-white transition hover:border-amber-300"
           >
             Lengkapi Profil
             <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
@@ -466,7 +448,7 @@ export function DocumentsSection() {
         <div
           role="status"
           data-testid="documents-loading"
-          className="rounded-2xl border border-[#243049] bg-[#141d2e] p-6 text-center text-sm text-slate-400"
+          className="rounded-2xl border border-edge bg-panel p-6 text-center text-sm text-ink-3"
         >
           Memuat status ketiga dokumen identitas...
         </div>
@@ -489,7 +471,7 @@ export function DocumentsSection() {
           <button
             type="button"
             onClick={() => void documentsQuery.refetch()}
-            className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-rose-400/40 bg-[#0e1626] px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-950"
+            className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-rose-400/40 bg-well px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-950"
           >
             <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
             Muat Ulang
@@ -497,100 +479,98 @@ export function DocumentsSection() {
         </section>
       )}
 
-      {/* 3 Document Cards */}
+      {/* The portal's DOKUMEN sheet: a white card over the space ground with
+          one stacked row per document — a label, the file it holds, and its
+          actions on one full-width line. Measured from the Schematics 2026
+          Figma, node 1149:10712. */}
       {documents && (
-        <div className="grid gap-5 sm:grid-cols-2">
-          {DOCUMENT_SLOTS.map((slot) => {
-            const item = documents[slot.type]
-            const state = slotStates[slot.type]
-            const isPdf = item?.content_type === 'application/pdf'
-            const percent = state.progress?.percent ?? 0
-
-            return (
-              <article
-                key={slot.type}
-                data-testid={`document-card-${slot.type}`}
-                className="flex flex-col justify-between rounded-2xl border border-[#243049] bg-[#141d2e] p-6 shadow-[0_18px_50px_rgba(0,0,0,0.45)]"
+        <section data-testid="documents-sheet" className={`${SHEET} px-6 py-7 sm:px-10 sm:py-8`}>
+          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+            <h3 className={SHEET_TITLE}>DOKUMEN</h3>
+            <div className="flex flex-wrap items-center gap-2">
+              <span
+                data-testid="documents-progress-pill"
+                className="rounded-full border border-edge bg-well px-3 py-1 text-xs font-medium text-ink-2"
               >
-                <div>
-                  {/* Card Header */}
-                  <div className="flex items-start justify-between gap-3 border-b border-[#243049] pb-4">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#243049] bg-[#0e1626] text-white">
-                        {item ? (
-                          isPdf ? (
-                            <FileText className="h-5 w-5" aria-hidden="true" />
-                          ) : (
-                            <FileImage className="h-5 w-5" aria-hidden="true" />
-                          )
+                {uploadedCount}/3 dokumen terunggah
+              </span>
+              <span
+                data-testid="documents-verification-badge"
+                className={`rounded-full px-3 py-1 text-xs font-semibold ${statusBadge.sheetClassName}`}
+              >
+                {statusBadge.label}
+              </span>
+            </div>
+          </div>
+
+          <p className={`mt-1 ${SHEET_MUTED}`}>
+            JPG, PNG, atau PDF · maks {formatBytes(maxDocBytes)}
+          </p>
+
+          <div className="mt-6 flex flex-col gap-7">
+            {DOCUMENT_SLOTS.map((slot) => {
+              const item = documents[slot.type]
+              const state = slotStates[slot.type]
+              const isPdf = item?.content_type === 'application/pdf'
+              const percent = state.progress?.percent ?? 0
+
+              return (
+                <article key={slot.type} data-testid={`document-card-${slot.type}`}>
+                  <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+                    <div className="flex items-center gap-2">
+                      {item ? (
+                        isPdf ? (
+                          <FileText className="h-4 w-4 shrink-0 text-ink" aria-hidden="true" />
                         ) : (
-                          <FileCheck2 className="h-5 w-5 text-slate-400" aria-hidden="true" />
-                        )}
-                      </div>
-                      <div>
-                        <h2 className="text-base font-semibold text-white">{slot.title}</h2>
-                        <p className="text-xs text-slate-400">{slot.subtitle}</p>
-                      </div>
+                          <FileImage className="h-4 w-4 shrink-0 text-ink" aria-hidden="true" />
+                        )
+                      ) : (
+                        <FileCheck2
+                          className="h-4 w-4 shrink-0 text-ink-3"
+                          aria-hidden="true"
+                        />
+                      )}
+                      <h4 className={SHEET_LABEL}>{slot.title}</h4>
                     </div>
 
                     {item ? (
-                      <span className="shrink-0 rounded-full border border-emerald-500/40 bg-emerald-950/50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-200">
+                      <span className="rounded-full bg-emerald-950/50 px-2.5 py-0.5 text-xs font-semibold text-emerald-200">
                         Terunggah
                       </span>
                     ) : (
-                      <span className="shrink-0 rounded-full border border-zinc-700 bg-zinc-900 px-2.5 py-0.5 text-[11px] font-medium text-slate-400">
+                      <span className="rounded-full border border-edge bg-well px-2.5 py-0.5 text-xs font-medium text-ink-2">
                         Kosong
                       </span>
                     )}
                   </div>
 
-                  {/* Metadata or Empty State */}
+                  {/* What this slot holds, on one line under its label. */}
                   {item ? (
-                    <dl className="mt-4 space-y-2 rounded-xl border border-[#243049] bg-[#0e1626] p-3.5 text-xs">
-                      <div className="flex items-center justify-between gap-2">
-                        <dt className="text-slate-400">Nama File</dt>
-                        <dd
-                          className="max-w-[180px] truncate font-medium text-white"
-                          title={item.original_filename}
-                        >
-                          {item.original_filename}
-                        </dd>
-                      </div>
-                      <div className="flex items-center justify-between gap-2">
-                        <dt className="text-slate-400">Format &amp; Ukuran</dt>
-                        <dd className="font-mono text-slate-300">
-                          {item.content_type} · {formatBytes(item.size_bytes)}
-                        </dd>
-                      </div>
-                      <div className="flex items-center justify-between gap-2">
-                        <dt className="text-slate-400">Diunggah</dt>
-                        <dd className="text-slate-300">{formatUploadedAt(item.uploaded_at)}</dd>
-                      </div>
-                      <div className="flex items-center justify-between gap-2">
-                        <dt className="text-slate-400">Item ID</dt>
-                        <dd className="font-mono text-[11px] text-slate-400">
-                          {item.item_id.slice(0, 8)}…
-                        </dd>
-                      </div>
-                    </dl>
+                    <p className={`mt-1 ${SHEET_MUTED}`}>
+                      <span className="font-medium text-ink" title={item.original_filename}>
+                        {item.original_filename}
+                      </span>{' '}
+                      · {item.content_type} · {formatBytes(item.size_bytes)} ·{' '}
+                      {formatUploadedAt(item.uploaded_at)} ·{' '}
+                      <span className="font-mono text-xs">{item.item_id.slice(0, 8)}…</span>
+                    </p>
                   ) : (
-                    <div className="mt-4 rounded-xl border border-dashed border-[#2f2f2f] bg-[#0e1626]/70 p-4 text-xs text-slate-400">
-                      <p className="font-medium text-slate-200">Belum ada dokumen terunggah.</p>
-                      <p className="mt-1 leading-relaxed">{slot.privacyNote}</p>
-                    </div>
+                    <p className={`mt-1 ${SHEET_MUTED}`}>
+                      Belum ada dokumen terunggah. {slot.privacyNote}
+                    </p>
                   )}
 
                   {/* Active XHR Upload Progress Bar */}
                   {state.isUploading && (
                     <div
                       data-testid={`doc-progress-box-${slot.type}`}
-                      className="mt-4 rounded-xl border border-[#243049] bg-[#0e1626] p-3.5"
+                      className="mt-3 rounded-[14.52px] border border-edge p-3.5"
                     >
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="font-medium text-slate-200">
+                      <div className="flex items-center justify-between text-xs text-ink-2">
+                        <span className="font-medium text-ink">
                           Mengenkripsi &amp; mengunggah stream...
                         </span>
-                        <span className="font-mono text-slate-300">
+                        <span className="tabular-nums">
                           {state.progress?.percent !== null && state.progress?.percent !== undefined
                             ? `${state.progress.percent}%`
                             : 'Memproses...'}
@@ -603,14 +583,14 @@ export function DocumentsSection() {
                         aria-valuemax={100}
                         aria-valuenow={percent}
                         data-testid={`doc-progressbar-${slot.type}`}
-                        className="mt-2 h-2 w-full overflow-hidden rounded-full bg-zinc-900"
+                        className="mt-2 h-2 w-full overflow-hidden rounded-full bg-edge-soft"
                       >
                         <div
-                          className="h-full rounded-full bg-[#ededed] transition-all duration-150"
+                          className="h-full rounded-full bg-night transition-[width] duration-150"
                           style={{ width: `${Math.max(4, percent)}%` }}
                         />
                       </div>
-                      <div className="mt-2 flex items-center justify-between text-[11px] text-slate-400">
+                      <div className="mt-2 flex items-center justify-between text-[11px] text-ink-2">
                         <span>
                           {state.progress
                             ? `${formatBytes(state.progress.loaded)} / ${formatBytes(state.progress.total)}`
@@ -619,7 +599,7 @@ export function DocumentsSection() {
                         <button
                           type="button"
                           onClick={() => handleCancelUpload(slot.type)}
-                          className="cursor-pointer font-medium text-rose-400 hover:text-rose-300"
+                          className="cursor-pointer font-semibold text-rose-300 hover:underline"
                         >
                           Batalkan
                         </button>
@@ -632,12 +612,9 @@ export function DocumentsSection() {
                     <div
                       role="alert"
                       data-testid={`doc-error-${slot.type}`}
-                      className="mt-4 flex items-start gap-2 rounded-xl border border-rose-500/40 bg-rose-950/40 p-3 text-xs text-rose-200"
+                      className="mt-3 flex items-start gap-2 rounded-[14.52px] bg-rose-950/50 p-3 text-xs text-rose-200"
                     >
-                      <AlertCircle
-                        className="mt-0.5 h-3.5 w-3.5 shrink-0 text-rose-400"
-                        aria-hidden="true"
-                      />
+                      <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
                       <span>{state.errorMessage}</span>
                     </div>
                   )}
@@ -647,43 +624,38 @@ export function DocumentsSection() {
                     <div
                       role="status"
                       data-testid={`doc-success-${slot.type}`}
-                      className="mt-4 flex items-start gap-2 rounded-xl border border-emerald-500/40 bg-emerald-950/35 p-3 text-xs text-emerald-200"
+                      className="mt-3 flex items-start gap-2 rounded-[14.52px] bg-emerald-950/50 p-3 text-xs text-emerald-200"
                     >
-                      <CheckCircle2
-                        className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-400"
-                        aria-hidden="true"
-                      />
+                      <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
                       <span>{state.successMessage}</span>
                     </div>
                   )}
-                </div>
 
-                {/* Action Buttons + Hidden File Input */}
-                <div className="mt-5 space-y-2.5 border-t border-[#243049] pt-4">
-                  <input
-                    ref={(el) => {
-                      fileInputRefs.current[slot.type] = el
-                    }}
-                    id={`file-input-${slot.type}`}
-                    data-testid={`file-input-${slot.type}`}
-                    type="file"
-                    accept=".jpg,.jpeg,.png,.pdf,image/jpeg,image/png,application/pdf"
-                    onChange={(e) => void handleFileSelected(slot.type, e)}
-                    disabled={state.isUploading}
-                    className="sr-only"
-                  />
+                  {/* The row's actions, on one full-width line. */}
+                  <div className="mt-2.5 flex flex-col gap-2 sm:flex-row">
+                    <input
+                      ref={(el) => {
+                        fileInputRefs.current[slot.type] = el
+                      }}
+                      id={`file-input-${slot.type}`}
+                      data-testid={`file-input-${slot.type}`}
+                      type="file"
+                      accept=".jpg,.jpeg,.png,.pdf,image/jpeg,image/png,application/pdf"
+                      onChange={(e) => void handleFileSelected(slot.type, e)}
+                      disabled={state.isUploading}
+                      className="sr-only"
+                    />
 
-                  {item ? (
-                    <>
-                      <div className="grid grid-cols-2 gap-2">
+                    {item ? (
+                      <>
                         <button
                           type="button"
                           data-testid={`doc-preview-btn-${slot.type}`}
                           onClick={() => void handleOpenPreview(slot.title, item)}
                           disabled={state.isUploading}
-                          className="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-[#243049] bg-[#0e1626] px-3 py-2 text-xs font-medium text-slate-200 transition hover:border-cyan-400/60 hover:text-white disabled:opacity-50"
+                          className={SHEET_ACTION}
                         >
-                          <Eye className="h-3.5 w-3.5" aria-hidden="true" />
+                          <Eye className="h-[18px] w-[18px]" aria-hidden="true" />
                           Pratinjau
                         </button>
 
@@ -692,47 +664,47 @@ export function DocumentsSection() {
                           data-testid={`doc-download-btn-${slot.type}`}
                           onClick={() => void handleDownloadDocument(slot.type, item)}
                           disabled={state.isUploading || downloadingType === slot.type}
-                          className="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-[#243049] bg-[#0e1626] px-3 py-2 text-xs font-medium text-slate-200 transition hover:border-cyan-400/60 hover:text-white disabled:opacity-50"
+                          className={SHEET_ACTION}
                         >
-                          <Download className="h-3.5 w-3.5" aria-hidden="true" />
+                          <Download className="h-[18px] w-[18px]" aria-hidden="true" />
                           {downloadingType === slot.type ? 'Mengunduh...' : 'Unduh'}
                         </button>
-                      </div>
 
+                        <button
+                          type="button"
+                          data-testid={`doc-replace-btn-${slot.type}`}
+                          onClick={() => fileInputRefs.current[slot.type]?.click()}
+                          disabled={state.isUploading}
+                          className={`${SHEET_ACTION_PRIMARY} w-full sm:w-auto sm:shrink-0`}
+                        >
+                          <Upload className="h-[18px] w-[18px]" aria-hidden="true" />
+                          Ganti Dokumen
+                        </button>
+                      </>
+                    ) : (
                       <button
                         type="button"
-                        data-testid={`doc-replace-btn-${slot.type}`}
+                        data-testid={`doc-upload-btn-${slot.type}`}
                         onClick={() => fileInputRefs.current[slot.type]?.click()}
                         disabled={state.isUploading}
-                        className="inline-flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-md bg-[#ededed] px-3.5 py-2 text-xs font-semibold text-black transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
+                        className={SHEET_ACTION}
                       >
-                        <Upload className="h-3.5 w-3.5" aria-hidden="true" />
-                        Ganti Dokumen
+                        <Upload className="h-[18px] w-[18px]" aria-hidden="true" />
+                        Pilih &amp; Unggah File
                       </button>
-                    </>
-                  ) : (
-                    <button
-                      type="button"
-                      data-testid={`doc-upload-btn-${slot.type}`}
-                      onClick={() => fileInputRefs.current[slot.type]?.click()}
-                      disabled={state.isUploading}
-                      className="inline-flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-md bg-[#ededed] px-4 py-2.5 text-xs font-semibold text-black transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      <Upload className="h-3.5 w-3.5" aria-hidden="true" />
-                      Pilih &amp; Unggah File
-                    </button>
-                  )}
-                </div>
-              </article>
-            )
-          })}
-        </div>
+                    )}
+                  </div>
+                </article>
+              )
+            })}
+          </div>
+        </section>
       )}
 
       {/* Security & Replace Semantics Footer */}
-      <footer className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#243049] bg-[#141d2e] px-5 py-4 text-xs text-slate-400">
+      <footer className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-edge bg-panel px-5 py-4 text-xs text-ink-3">
         <div className="flex items-center gap-2">
-          <Lock className="h-3.5 w-3.5 shrink-0 text-slate-300" aria-hidden="true" />
+          <Lock className="h-3.5 w-3.5 shrink-0 text-ink-2" aria-hidden="true" />
           <span>
             Mengunggah ulang akan menggantikan file lama dengan kunci &amp; nonce baru. Saat dibuka,
             server memverifikasi HMAC dan kesamaan ketiga dekripsi penuh sebelum mengirim blob.
@@ -740,7 +712,7 @@ export function DocumentsSection() {
         </div>
         <a
           href="#team-section"
-          className="inline-flex items-center gap-1 font-medium text-slate-200 transition hover:text-white"
+          className="inline-flex items-center gap-1 font-medium text-ink-2 transition hover:text-white"
         >
           Lanjut ke Team Workspace
           <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
@@ -754,15 +726,15 @@ export function DocumentsSection() {
           aria-modal="true"
           aria-labelledby="doc-preview-modal-title"
           data-testid="document-preview-modal"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-[#0c1424]/90 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[#0c1424]/95 p-4"
         >
-          <div className="flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-[#243049] bg-[#141d2e] shadow-[0_24px_80px_rgba(0,0,0,0.95)]">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#243049] px-5 py-4">
+          <div className="flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-edge bg-panel shadow-[0_24px_80px_rgba(0,0,0,0.95)]">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-edge px-5 py-4">
               <div>
                 <h2 id="doc-preview-modal-title" className="text-sm font-semibold text-white">
                   Pratinjau {previewModal.slotTitle} — {previewModal.item.original_filename}
                 </h2>
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-ink-3">
                   Terverifikasi penuh dari 3 ciphertext (AES-CTR, DES-CTR, RC4 + HMAC-SHA256) ·{' '}
                   {formatBytes(previewModal.item.size_bytes)}
                 </p>
@@ -777,7 +749,7 @@ export function DocumentsSection() {
                       previewModal.item,
                     )
                   }
-                  className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-[#243049] bg-[#0e1626] px-3 py-1.5 text-xs font-medium text-slate-200 transition hover:border-cyan-400/60 hover:text-white"
+                  className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-edge bg-well px-3 py-1.5 text-xs font-medium text-ink-2 transition hover:border-sky/70 hover:text-white"
                 >
                   <Download className="h-3.5 w-3.5" aria-hidden="true" />
                   Unduh (?download=1)
@@ -786,17 +758,17 @@ export function DocumentsSection() {
                   type="button"
                   aria-label="Tutup pratinjau"
                   onClick={closePreviewModal}
-                  className="inline-flex cursor-pointer items-center justify-center rounded-xl border border-[#243049] bg-[#0e1626] p-1.5 text-slate-400 transition hover:border-cyan-400/60 hover:text-white"
+                  className="inline-flex cursor-pointer items-center justify-center rounded-xl border border-edge bg-well p-1.5 text-ink-3 transition hover:border-sky/70 hover:text-white"
                 >
                   <X className="h-4 w-4" aria-hidden="true" />
                 </button>
               </div>
             </div>
 
-            <div className="flex-1 overflow-auto bg-[#0e1626] p-5">
+            <div className="flex-1 overflow-auto bg-well p-5">
               {previewModal.isLoading && (
-                <div className="flex min-h-[320px] flex-col items-center justify-center text-sm text-slate-400">
-                  <RefreshCw className="h-6 w-6 animate-spin text-slate-300" aria-hidden="true" />
+                <div className="flex min-h-[320px] flex-col items-center justify-center text-sm text-ink-3">
+                  <RefreshCw className="h-6 w-6 animate-spin text-ink-2" aria-hidden="true" />
                   <p className="mt-3">
                     Memverifikasi HMAC ketiga ciphertext dan mengunduh blob utuh...
                   </p>
@@ -835,14 +807,14 @@ export function DocumentsSection() {
                       data-testid="preview-pdf-iframe"
                       title={`Pratinjau PDF ${previewModal.item.original_filename}`}
                       src={previewModal.objectUrl}
-                      className="h-[68vh] w-full rounded-xl border border-[#243049] bg-zinc-950"
+                      className="h-[68vh] w-full rounded-xl border border-edge bg-ground"
                     />
                   ) : (
                     <img
                       data-testid="preview-image"
                       src={previewModal.objectUrl}
                       alt={`Pratinjau ${previewModal.item.original_filename}`}
-                      className="max-h-[68vh] max-w-full rounded-xl border border-[#243049] object-contain"
+                      className="max-h-[68vh] max-w-full rounded-xl border border-edge object-contain"
                     />
                   )}
                 </div>

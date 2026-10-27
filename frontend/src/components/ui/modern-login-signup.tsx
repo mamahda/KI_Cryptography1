@@ -1,15 +1,28 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { AlertCircle, Eye, EyeOff, ShieldCheck } from 'lucide-react'
-import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { AlertCircle, Eye, EyeOff } from 'lucide-react'
+import { useState, type FormEvent, type ReactNode } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
-import type * as ThreeNamespace from 'three'
 import { apiClient, isApiClientError } from '@/api'
+import lockupUrl from '@/assets/brand/schematics-lockup.svg'
+import { SpaceScene } from '@/components/ui/SpaceScene'
 import { cn } from '@/lib/utils'
 import { resolvePostAuthNavigation } from '@/pages/auth/authNavigation'
 import { useAuthStore } from '@/stores/authStore'
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const MIN_PASSWORD_LENGTH = 10
+
+/** The portal's field: a hairline dark rule on white, 6px corners. */
+const FIELD_INPUT =
+  'w-full rounded-md border-[0.8px] border-[#000219] bg-transparent px-3 py-2.5 text-sm text-[#000219] placeholder:text-[#6b7280] focus:border-[#0b6f93] focus:outline-2 focus:outline-offset-1 focus:outline-[#0b6f93]'
+
+/** The brand's one filled control: flat sky, black label, full width. */
+const SUBMIT =
+  'mt-1 w-full cursor-pointer rounded-[10px] bg-sky px-4 py-2.5 text-sm font-semibold text-black transition hover:bg-[#8ee0fb] disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0b6f93]'
+
+/** Sky reads at 1.8:1 on white, so the inline link takes its darker step. */
+const SWITCH_LINK =
+  'cursor-pointer font-semibold text-[#0b6f93] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0b6f93]'
 
 export interface ModernLoginSignupProps {
   initialMode?: 'login' | 'register'
@@ -28,8 +41,6 @@ export default function ModernLoginSignup({
   syncWithRouter = false,
   className,
 }: ModernLoginSignupProps) {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const canvasRef = useRef<HTMLCanvasElement>(null)
   const [localIsLogin, setLocalIsLogin] = useState(initialMode === 'login')
   const isLogin = syncWithRouter ? initialMode === 'login' : localIsLogin
 
@@ -46,193 +57,6 @@ export default function ModernLoginSignup({
   const [showPassword, setShowPassword] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<AuthFieldErrors>({})
   const [formError, setFormError] = useState<string | null>(null)
-
-  useEffect(() => {
-    const canvas = canvasRef.current
-    const container = containerRef.current
-    if (!canvas || !container || typeof WebGL2RenderingContext === 'undefined') {
-      return
-    }
-
-    let active = true
-    let renderer: ThreeNamespace.WebGLRenderer | null = null
-    let geometry: ThreeNamespace.PlaneGeometry | null = null
-    let material: ThreeNamespace.ShaderMaterial | null = null
-    let animationId = 0
-    let detachResize: (() => void) | null = null
-
-    let glContext: WebGL2RenderingContext | null = null
-    try {
-      glContext = canvas.getContext('webgl2', {
-        alpha: true,
-        antialias: false,
-      })
-    } catch {
-      glContext = null
-    }
-
-    if (!glContext) {
-      return
-    }
-
-    const getBounds = () => ({
-      width: container.clientWidth || window.innerWidth,
-      height: container.clientHeight || window.innerHeight,
-    })
-
-    const verifiedGl = glContext
-
-    void import('three')
-      .then((THREE) => {
-        if (!active) {
-          return
-        }
-
-        const initialBounds = getBounds()
-        renderer = new THREE.WebGLRenderer({
-          canvas,
-          context: verifiedGl,
-          alpha: true,
-          antialias: false,
-        })
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2))
-        renderer.setSize(initialBounds.width, initialBounds.height)
-
-        const scene = new THREE.Scene()
-        const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1)
-
-        const uniforms = {
-          u_time: { value: 0 },
-          u_resolution: {
-            value: new THREE.Vector2(initialBounds.width * 2, initialBounds.height * 2),
-          },
-          u_opacities: { value: [0.3, 0.3, 0.3, 0.5, 0.5, 0.5, 0.8, 0.8, 0.8, 1.0] },
-          u_colors: {
-            value: [
-              new THREE.Vector3(1, 1, 1),
-              new THREE.Vector3(1, 1, 1),
-              new THREE.Vector3(1, 1, 1),
-              new THREE.Vector3(1, 1, 1),
-              new THREE.Vector3(1, 1, 1),
-              new THREE.Vector3(1, 1, 1),
-            ],
-          },
-          u_total_size: { value: 20.0 },
-          u_dot_size: { value: 6.0 },
-          u_reverse: { value: 0 },
-        }
-
-        material = new THREE.ShaderMaterial({
-          vertexShader: `
-            precision mediump float;
-            uniform vec2 u_resolution;
-            out vec2 fragCoord;
-            void main() {
-              gl_Position = vec4(position, 1.0);
-              fragCoord = (position.xy + 1.0) * 0.5 * u_resolution;
-              fragCoord.y = u_resolution.y - fragCoord.y;
-            }
-          `,
-          fragmentShader: `
-            precision mediump float;
-            in vec2 fragCoord;
-
-            uniform float u_time;
-            uniform float u_opacities[10];
-            uniform vec3 u_colors[6];
-            uniform float u_total_size;
-            uniform float u_dot_size;
-            uniform vec2 u_resolution;
-            uniform int u_reverse;
-
-            out vec4 fragColor;
-
-            float PHI = 1.61803398874989484820459;
-            float random(vec2 xy) {
-                return fract(tan(distance(xy * PHI, xy) * 0.5) * xy.x);
-            }
-
-            void main() {
-                vec2 st = fragCoord.xy;
-                st.x -= abs(floor((mod(u_resolution.x, u_total_size) - u_dot_size) * 0.5));
-                st.y -= abs(floor((mod(u_resolution.y, u_total_size) - u_dot_size) * 0.5));
-
-                float opacity = step(0.0, st.x) * step(0.0, st.y);
-
-                vec2 st2 = vec2(int(st.x / u_total_size), int(st.y / u_total_size));
-
-                float frequency = 5.0;
-                float show_offset = random(st2);
-                float rand = random(st2 * floor((u_time / frequency) + show_offset + frequency));
-                opacity *= u_opacities[int(rand * 10.0)];
-                opacity *= 1.0 - step(u_dot_size / u_total_size, fract(st.x / u_total_size));
-                opacity *= 1.0 - step(u_dot_size / u_total_size, fract(st.y / u_total_size));
-
-                vec3 color = u_colors[int(show_offset * 6.0)];
-
-                float animation_speed_factor = 3.0;
-                vec2 center_grid = u_resolution / 2.0 / u_total_size;
-                float dist_from_center = distance(center_grid, st2);
-
-                float timing_offset_intro = dist_from_center * 0.01 + (random(st2) * 0.15);
-
-                float current_timing_offset = timing_offset_intro;
-                opacity *= step(current_timing_offset, u_time * animation_speed_factor);
-                opacity *= clamp((1.0 - step(current_timing_offset + 0.1, u_time * animation_speed_factor)) * 1.25, 1.0, 1.25);
-
-                fragColor = vec4(color, opacity);
-                fragColor.rgb *= fragColor.a;
-            }
-          `,
-          uniforms,
-          glslVersion: THREE.GLSL3,
-          blending: THREE.CustomBlending,
-          blendSrc: THREE.SrcAlphaFactor,
-          blendDst: THREE.OneFactor,
-          transparent: true,
-        })
-
-        geometry = new THREE.PlaneGeometry(2, 2)
-        const mesh = new THREE.Mesh(geometry, material)
-        scene.add(mesh)
-
-        const startTime = performance.now()
-        const activeRenderer = renderer
-        const animate = () => {
-          if (!active) {
-            return
-          }
-          animationId = requestAnimationFrame(animate)
-          uniforms.u_time.value = (performance.now() - startTime) / 1000.0
-          activeRenderer.render(scene, camera)
-        }
-        animate()
-
-        const handleResize = () => {
-          if (!renderer) {
-            return
-          }
-          const nextBounds = getBounds()
-          renderer.setSize(nextBounds.width, nextBounds.height)
-          uniforms.u_resolution.value.set(nextBounds.width * 2, nextBounds.height * 2)
-        }
-
-        window.addEventListener('resize', handleResize)
-        detachResize = () => window.removeEventListener('resize', handleResize)
-      })
-      .catch(() => undefined)
-
-    return () => {
-      active = false
-      detachResize?.()
-      if (animationId) {
-        cancelAnimationFrame(animationId)
-      }
-      renderer?.dispose()
-      geometry?.dispose()
-      material?.dispose()
-    }
-  }, [])
 
   const loginMutation = useMutation({
     mutationFn: apiClient.auth.login,
@@ -380,300 +204,242 @@ export default function ModernLoginSignup({
     }
   }
 
-  const BrandLogo = (
-    <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-full border border-[#243049] bg-[#0e1626] text-white shadow-inner">
-      <ShieldCheck className="h-5 w-5 text-slate-100" aria-hidden="true" />
-    </div>
-  )
+
+  // Wording as the Schematics 2026 Figma sets it (nodes 342:716, 342:2808).
+  const title = isLogin ? 'LOGIN' : 'REGISTRASI'
+  const subtitle = isLogin
+    ? 'Silahkan Masuk dengan Akun Anda'
+    : 'Khusus mahasiswa peserta hackathon Schematics NIC'
 
   return (
     <div
-      ref={containerRef}
       className={cn(
-        'relative flex min-h-[calc(100vh-3.5rem)] w-full items-center justify-center overflow-hidden bg-[#0e1626] px-4 py-10 text-white',
+        'relative min-h-screen w-full overflow-hidden bg-ground',
         className,
       )}
     >
-      {/* Subtle CSS dot fallback behind WebGL shader */}
+      <SpaceScene className="pointer-events-none absolute inset-0 h-full w-full" />
+      {/* A scrim so the form keeps its contrast over the scene on small screens. */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0 z-0 opacity-25"
-        style={{
-          backgroundImage: 'radial-gradient(rgba(255, 255, 255, 0.35) 1px, transparent 1px)',
-          backgroundSize: '20px 20px',
-        }}
+        className="pointer-events-none absolute inset-0 bg-ground/75 lg:bg-transparent"
       />
 
-      {/* WebGL Animated Dot-Matrix Shader Canvas */}
-      <canvas ref={canvasRef} className="pointer-events-none absolute inset-0 z-0 h-full w-full" />
+      <div className="relative mx-auto grid min-h-screen w-full max-w-7xl items-center gap-10 px-4 py-12 lg:grid-cols-2">
+        {/* The scene carries the left half at desktop width. */}
+        <div aria-hidden="true" className="hidden lg:block" />
 
-      {/* Radial Vignette */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 z-1"
-        style={{
-          background:
-            'radial-gradient(circle at center, rgba(0, 0, 0, 0.78) 0%, rgba(0, 0, 0, 0.15) 100%)',
-        }}
-      />
+        <div className="w-full max-w-[440px] justify-self-center lg:justify-self-end">
+          <h1 className="font-display text-[3rem] leading-[4rem] font-semibold text-white">
+            {title}
+          </h1>
+          <p className="text-base text-white">{subtitle}</p>
 
-      {/* Auth Modal Card */}
-      <section className="relative z-2 flex w-full max-w-[420px] flex-col items-center rounded-2xl border border-[#243049] bg-[#141d2e] p-7 shadow-[0_10px_40px_rgba(0,0,0,0.85)] sm:p-8">
-        {isLogin ? (
-          <div className="flex w-full max-w-[360px] flex-col items-center text-center">
-            {BrandLogo}
-            <h1 className="text-[1.35rem] font-semibold tracking-tight text-white">
-              Masuk ke Schematics NIC
-            </h1>
-            <p className="mt-1 mb-4 text-[0.85rem] leading-relaxed text-[#888]">
-              Gunakan akun peserta, juri, atau superadmin Anda.
-            </p>
-
+          <section className="mt-4 rounded-xl bg-white p-6">
             {formError && (
               <div
                 role="alert"
-                data-testid="login-error-alert"
-                className="mb-3.5 flex w-full items-start gap-2 rounded-xl border border-rose-500/40 bg-rose-950/50 px-3 py-2.5 text-left text-xs text-rose-200"
+                data-testid={isLogin ? 'login-error-alert' : 'register-error-alert'}
+                className="mb-4 flex items-start gap-2 rounded-lg border border-[#b42318]/30 bg-[#fef3f2] px-3 py-2.5 text-sm text-[#912018]"
               >
-                <AlertCircle
-                  className="mt-0.5 h-4 w-4 shrink-0 text-rose-400"
-                  aria-hidden="true"
-                />
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
                 <span>{formError}</span>
               </div>
             )}
 
-            <form
-              onSubmit={handleLoginSubmit}
-              noValidate
-              className="flex w-full flex-col gap-3 text-left"
-            >
-              <div>
-                <label
-                  htmlFor="login-email"
-                  className="mb-1 block text-xs font-medium text-slate-300"
-                >
-                  Email
-                </label>
-                <input
+            {isLogin ? (
+              <form onSubmit={handleLoginSubmit} noValidate className="flex flex-col gap-4">
+                <Field
                   id="login-email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  aria-invalid={Boolean(fieldErrors.email)}
-                  placeholder="nama@mahasiswa.ac.id"
-                  className="w-full rounded-xl border border-[#243049] bg-[#0e1626] px-3.5 py-2.5 text-sm text-white placeholder:text-slate-400 focus:border-zinc-400 focus:outline-none"
-                />
-                {fieldErrors.email && (
-                  <p className="mt-1 text-xs text-rose-400">{fieldErrors.email}</p>
-                )}
-              </div>
-
-              <div>
-                <label
-                  htmlFor="login-password"
-                  className="mb-1 block text-xs font-medium text-slate-300"
+                  label="Email"
+                  hint="Format email example@gmail.com"
+                  error={fieldErrors.email}
                 >
-                  Password
-                </label>
-                <div className="relative">
                   <input
-                    id="login-password"
-                    name="password"
-                    type={showPassword ? 'text' : 'password'}
-                    autoComplete="current-password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    aria-invalid={Boolean(fieldErrors.password)}
-                    placeholder="Masukkan password"
-                    className="w-full rounded-xl border border-[#243049] bg-[#0e1626] px-3.5 py-2.5 pr-10 text-sm text-white placeholder:text-slate-400 focus:border-zinc-400 focus:outline-none"
+                    id="login-email"
+                    name="email"
+                    type="email"
+                    autoComplete="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    aria-required="true"
+                    aria-invalid={Boolean(fieldErrors.email)}
+                    placeholder="Masukkan Alamat Email"
+                    className={FIELD_INPUT}
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((prev) => !prev)}
-                    aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
-                    className="absolute inset-y-0 right-0 flex items-center px-3 text-slate-400 hover:text-slate-300"
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-                {fieldErrors.password && (
-                  <p className="mt-1 text-xs text-rose-400">{fieldErrors.password}</p>
-                )}
-              </div>
+                </Field>
 
-              <button
-                type="submit"
-                disabled={loginMutation.isPending}
-                className="mt-1 w-full cursor-pointer rounded-xl bg-gradient-to-r from-cyan-400 to-sky-500 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:from-cyan-300 hover:to-sky-400 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {loginMutation.isPending ? 'Memproses login...' : 'Masuk'}
-              </button>
-            </form>
+                <Field id="login-password" label="Password" error={fieldErrors.password}>
+                  <div className="relative">
+                    <input
+                      id="login-password"
+                      name="password"
+                      type={showPassword ? 'text' : 'password'}
+                      autoComplete="current-password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      aria-required="true"
+                      aria-invalid={Boolean(fieldErrors.password)}
+                      placeholder="Masukkan Password"
+                      className={`${FIELD_INPUT} pr-10`}
+                    />
+                    <PasswordToggle shown={showPassword} onToggle={setShowPassword} />
+                  </div>
+                </Field>
 
-            <div className="my-4 h-px w-full bg-[#222]" />
-
-            <div className="text-sm text-[#888]">
-              Belum punya akun peserta?{' '}
-              {syncWithRouter ? (
-                <Link
-                  to="/register"
-                  state={location.state}
-                  className="font-medium text-white hover:underline"
-                >
-                  Daftar sekarang
-                </Link>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => switchMode(false)}
-                  className="cursor-pointer font-medium text-white hover:underline"
-                >
-                  Daftar sekarang
+                <button type="submit" disabled={loginMutation.isPending} className={SUBMIT}>
+                  {loginMutation.isPending ? 'Memproses login...' : 'Masuk'}
                 </button>
-              )}
-            </div>
-          </div>
-        ) : (
-          <div className="flex w-full max-w-[360px] flex-col items-center text-center">
-            {BrandLogo}
-            <h1 className="text-[1.35rem] font-semibold tracking-tight text-white">
-              Daftar Akun Peserta
-            </h1>
-            <p className="mt-1 mb-4 text-[0.85rem] leading-relaxed text-[#888]">
-              Khusus mahasiswa peserta hackathon Schematics NIC.
-            </p>
-
-            {formError && (
-              <div
-                role="alert"
-                data-testid="register-error-alert"
-                className="mb-3.5 flex w-full items-start gap-2 rounded-xl border border-rose-500/40 bg-rose-950/50 px-3 py-2.5 text-left text-xs text-rose-200"
-              >
-                <AlertCircle
-                  className="mt-0.5 h-4 w-4 shrink-0 text-rose-400"
-                  aria-hidden="true"
-                />
-                <span>{formError}</span>
-              </div>
-            )}
-
-            <form
-              onSubmit={handleRegisterSubmit}
-              noValidate
-              className="flex w-full flex-col gap-3 text-left"
-            >
-              <div>
-                <label
-                  htmlFor="register-email"
-                  className="mb-1 block text-xs font-medium text-slate-300"
-                >
-                  Email Mahasiswa
-                </label>
-                <input
+              </form>
+            ) : (
+              <form onSubmit={handleRegisterSubmit} noValidate className="flex flex-col gap-4">
+                <Field
                   id="register-email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  aria-invalid={Boolean(fieldErrors.email)}
-                  placeholder="nama@mahasiswa.ac.id"
-                  className="w-full rounded-xl border border-[#243049] bg-[#0e1626] px-3.5 py-2.5 text-sm text-white placeholder:text-slate-400 focus:border-zinc-400 focus:outline-none"
-                />
-                {fieldErrors.email && (
-                  <p className="mt-1 text-xs text-rose-400">{fieldErrors.email}</p>
-                )}
-              </div>
-
-              <div>
-                <label
-                  htmlFor="register-password"
-                  className="mb-1 block text-xs font-medium text-slate-300"
+                  label="Email Mahasiswa"
+                  hint="Format email example@gmail.com"
+                  error={fieldErrors.email}
                 >
-                  Password (minimal 10 karakter)
-                </label>
-                <div className="relative">
                   <input
-                    id="register-password"
-                    name="password"
+                    id="register-email"
+                    name="email"
+                    type="email"
+                    autoComplete="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    aria-required="true"
+                    aria-invalid={Boolean(fieldErrors.email)}
+                    placeholder="Masukkan Alamat Email"
+                    className={FIELD_INPUT}
+                  />
+                </Field>
+
+                <Field
+                  id="register-password"
+                  label="Password (minimal 10 karakter)"
+                  error={fieldErrors.password}
+                >
+                  <div className="relative">
+                    <input
+                      id="register-password"
+                      name="password"
+                      type={showPassword ? 'text' : 'password'}
+                      autoComplete="new-password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      aria-required="true"
+                      aria-invalid={Boolean(fieldErrors.password)}
+                      placeholder="Masukkan Password"
+                      className={`${FIELD_INPUT} pr-10`}
+                    />
+                    <PasswordToggle shown={showPassword} onToggle={setShowPassword} />
+                  </div>
+                </Field>
+
+                <Field
+                  id="register-confirm-password"
+                  label="Konfirmasi Password"
+                  error={fieldErrors.confirmPassword}
+                >
+                  <input
+                    id="register-confirm-password"
+                    name="confirmPassword"
                     type={showPassword ? 'text' : 'password'}
                     autoComplete="new-password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    aria-invalid={Boolean(fieldErrors.password)}
-                    placeholder="Minimal 10 karakter"
-                    className="w-full rounded-xl border border-[#243049] bg-[#0e1626] px-3.5 py-2.5 pr-10 text-sm text-white placeholder:text-slate-400 focus:border-zinc-400 focus:outline-none"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    aria-required="true"
+                    aria-invalid={Boolean(fieldErrors.confirmPassword)}
+                    placeholder="Ulangi Password Anda"
+                    className={FIELD_INPUT}
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((prev) => !prev)}
-                    aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
-                    className="absolute inset-y-0 right-0 flex items-center px-3 text-slate-400 hover:text-slate-300"
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-                {fieldErrors.password && (
-                  <p className="mt-1 text-xs text-rose-400">{fieldErrors.password}</p>
-                )}
-              </div>
+                </Field>
 
-              <div>
-                <label
-                  htmlFor="register-confirm-password"
-                  className="mb-1 block text-xs font-medium text-slate-300"
-                >
-                  Konfirmasi Password
-                </label>
-                <input
-                  id="register-confirm-password"
-                  name="confirmPassword"
-                  type={showPassword ? 'text' : 'password'}
-                  autoComplete="new-password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  aria-invalid={Boolean(fieldErrors.confirmPassword)}
-                  placeholder="Ulangi password Anda"
-                  className="w-full rounded-xl border border-[#243049] bg-[#0e1626] px-3.5 py-2.5 text-sm text-white placeholder:text-slate-400 focus:border-zinc-400 focus:outline-none"
-                />
-                {fieldErrors.confirmPassword && (
-                  <p className="mt-1 text-xs text-rose-400">{fieldErrors.confirmPassword}</p>
-                )}
-              </div>
+                <button type="submit" disabled={registerMutation.isPending} className={SUBMIT}>
+                  {registerMutation.isPending ? 'Mendaftarkan akun...' : 'Daftar & Masuk'}
+                </button>
+              </form>
+            )}
 
-              <button
-                type="submit"
-                disabled={registerMutation.isPending}
-                className="mt-1 w-full cursor-pointer rounded-xl bg-gradient-to-r from-cyan-400 to-sky-500 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:from-cyan-300 hover:to-sky-400 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {registerMutation.isPending ? 'Mendaftarkan akun...' : 'Daftar & Masuk'}
-              </button>
-            </form>
-
-            <div className="my-4 h-px w-full bg-[#222]" />
-
-            <div className="text-sm text-[#888]">
-              Sudah punya akun?{' '}
+            <p className="mt-4 text-center text-sm text-[#4b5563]">
+              {isLogin ? 'Belum punya akun? ' : 'Sudah punya akun? '}
               {syncWithRouter ? (
-                <Link to="/login" className="font-medium text-white hover:underline">
-                  Masuk di sini
+                <Link
+                  to={isLogin ? '/register' : '/login'}
+                  state={isLogin ? location.state : undefined}
+                  className={SWITCH_LINK}
+                >
+                  {isLogin ? 'Daftar sekarang' : 'Masuk di sini'}
                 </Link>
               ) : (
-                <button
-                  type="button"
-                  onClick={() => switchMode(true)}
-                  className="cursor-pointer font-medium text-white hover:underline"
-                >
-                  Masuk di sini
+                <button type="button" onClick={() => switchMode(!isLogin)} className={SWITCH_LINK}>
+                  {isLogin ? 'Daftar sekarang' : 'Masuk di sini'}
                 </button>
               )}
-            </div>
-          </div>
-        )}
-      </section>
+            </p>
+          </section>
+        </div>
+      </div>
+
+      <img
+        src={lockupUrl}
+        alt="Schematics 2026"
+        className="relative mx-auto mb-6 h-12 w-auto lg:absolute lg:right-10 lg:bottom-9 lg:mx-0 lg:mb-0 lg:h-16"
+      />
     </div>
+  )
+}
+
+/** Card-on-white field: a bold label with the portal's required marker. */
+function Field({
+  id,
+  label,
+  hint,
+  error,
+  children,
+}: {
+  id: string
+  label: string
+  hint?: string
+  error?: string
+  children: ReactNode
+}) {
+  return (
+    <div>
+      {/* The asterisk sits beside the label, not inside it, so the label's
+          text stays exactly the field name; `aria-required` carries the rule. */}
+      <div className="mb-1.5 flex items-center gap-1">
+        <label htmlFor={id} className="text-sm font-semibold text-[#000219]">
+          {label}
+        </label>
+        <span aria-hidden="true" className="text-[#b42318]">
+          *
+        </span>
+      </div>
+      {children}
+      {error ? (
+        <p className="mt-1.5 text-xs font-medium text-[#b42318]">{error}</p>
+      ) : hint ? (
+        <p className="mt-1.5 text-xs text-[#4b5563]">{hint}</p>
+      ) : null}
+    </div>
+  )
+}
+
+function PasswordToggle({
+  shown,
+  onToggle,
+}: {
+  shown: boolean
+  onToggle: (next: (prev: boolean) => boolean) => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onToggle((prev) => !prev)}
+      aria-label={shown ? 'Sembunyikan password' : 'Tampilkan password'}
+      className="absolute inset-y-0 right-0 flex cursor-pointer items-center px-3 text-[#4b5563] hover:text-[#000219]"
+    >
+      {shown ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+    </button>
   )
 }

@@ -54,7 +54,7 @@ describe('ParticipantDashboardPage', () => {
     })
 
     expect(
-      screen.getByRole('heading', { name: /Participant Dashboard/i }),
+      screen.getByRole('heading', { name: /^Ruang Peserta$/ }),
     ).toBeInTheDocument()
 
     const regCard = await screen.findByTestId('registration-countdown-card')
@@ -82,7 +82,7 @@ describe('ParticipantDashboardPage', () => {
     expect(screen.queryByTestId('rejection-alert')).not.toBeInTheDocument()
 
     // Documents, team and video are sections of this same page now.
-    expect(screen.getByRole('heading', { name: /Document Manager/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /^DOKUMEN$/ })).toBeInTheDocument()
     expect(
       screen.getByRole('heading', { name: /Team & Submission Workspace/i }),
     ).toBeInTheDocument()
@@ -141,7 +141,7 @@ describe('ParticipantDashboardPage', () => {
       within(rejectionAlert).getByRole('link', { name: /Unggah Ulang Dokumen/i }),
     ).toHaveAttribute('href', '#documents-section')
     expect(
-      await screen.findByRole('heading', { name: /Document Manager/i }),
+      await screen.findByRole('heading', { name: /^DOKUMEN$/ }),
     ).toBeInTheDocument()
   })
 

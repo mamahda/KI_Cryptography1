@@ -1,8 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { AlertCircle, CheckCircle2, Gavel, Inbox, UserPlus } from 'lucide-react'
+import { AlertCircle, CheckCircle2, Inbox, UserPlus } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { apiClient, isApiClientError } from '@/api'
-import { BTN_PRIMARY, CARD, INPUT, LABEL, RECESSED, WELL } from '@/components/ui/tokens'
+import {
+  BTN_PRIMARY,
+  CARD,
+  INPUT,
+  LABEL,
+  PAGE_TITLE,
+  RECESSED,
+  SECTION_HEADING,
+  WELL,
+} from '@/components/ui/tokens'
 import { formatTimestamp } from '@/lib/datetime'
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -63,20 +72,12 @@ export function AdminJuriPage() {
 
   return (
     <div data-testid="admin-juri-page" className="space-y-6">
-      <header className={`${CARD} p-6`}>
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-[#243049] bg-[#0e1626] px-3 py-1 text-xs font-medium text-slate-300">
-          <Gavel className="h-3.5 w-3.5 text-slate-100" aria-hidden="true" />
-          Superadmin
-        </span>
-        <h1 className="mt-2.5 text-2xl font-bold tracking-tight text-white">Akun Juri</h1>
-        <p className="mt-1.5 max-w-prose text-sm text-slate-400">
-          Akun juri dibuat oleh panitia, bukan melalui pendaftaran mandiri. Juri hanya dapat
-          melihat berkas tim yang sudah submit final.
-        </p>
+      <header>
+        <h1 className={PAGE_TITLE}>Akun Juri</h1>
       </header>
 
       <section className={`${CARD} p-6`} aria-labelledby="create-juri-heading">
-        <h2 id="create-juri-heading" className="text-lg font-semibold text-white">
+        <h2 id="create-juri-heading" className={SECTION_HEADING}>
           Buat akun juri
         </h2>
 
@@ -104,7 +105,7 @@ export function AdminJuriPage() {
           <div>
             <label htmlFor="juri-password-input" className={LABEL}>
               Kata sandi awal
-              <span className="ml-1 font-normal text-slate-400">
+              <span className="ml-1 font-normal text-ink-3">
                 (minimal {PASSWORD_MIN_LENGTH} karakter)
               </span>
             </label>
@@ -157,12 +158,12 @@ export function AdminJuriPage() {
       </section>
 
       <section className={`${CARD} p-6`} aria-labelledby="juri-list-heading">
-        <h2 id="juri-list-heading" className="text-lg font-semibold text-white">
+        <h2 id="juri-list-heading" className={SECTION_HEADING}>
           Akun juri terdaftar
         </h2>
 
         {juriQuery.isPending ? (
-          <p data-testid="juri-accounts-loading" className="mt-3 text-sm text-slate-400">
+          <p data-testid="juri-accounts-loading" className="mt-3 text-sm text-ink-3">
             Memuat akun juri...
           </p>
         ) : null}
@@ -191,10 +192,10 @@ export function AdminJuriPage() {
                   data-testid={`juri-account-${account.user_id}`}
                   className={`${WELL} flex flex-wrap items-center justify-between gap-2 px-3 py-2.5`}
                 >
-                  <span className="text-sm font-medium break-all text-slate-100">
+                  <span className="text-sm font-medium break-all text-ink">
                     {account.email}
                   </span>
-                  <span className={`${RECESSED} px-2 py-1 text-xs text-slate-300`}>
+                  <span className={`${RECESSED} px-2 py-1 text-xs text-ink-2`}>
                     Dibuat {formatTimestamp(account.created_at)}
                   </span>
                 </li>
@@ -205,8 +206,8 @@ export function AdminJuriPage() {
               data-testid="juri-accounts-list"
               className={`mt-3 ${WELL} flex flex-col items-center gap-2 px-4 py-10 text-center`}
             >
-              <Inbox className="h-6 w-6 text-slate-400" aria-hidden="true" />
-              <p className="text-sm font-medium text-slate-200">Belum ada akun juri</p>
+              <Inbox className="h-6 w-6 text-ink-3" aria-hidden="true" />
+              <p className="text-sm font-medium text-ink-2">Belum ada akun juri</p>
             </div>
           )
         ) : null}

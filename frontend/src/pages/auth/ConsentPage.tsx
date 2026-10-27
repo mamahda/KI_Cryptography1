@@ -14,7 +14,7 @@ function SafePolicyMarkdown({ markdown }: { markdown: string }) {
   const lines = markdown.split(/\r?\n/)
 
   return (
-    <div className="space-y-2.5 text-sm leading-relaxed text-slate-300">
+    <div className="space-y-2.5 text-sm leading-relaxed text-ink-2">
       {lines.map((rawLine, index) => {
         const line = rawLine.trim()
         if (!line) {
@@ -44,7 +44,7 @@ function SafePolicyMarkdown({ markdown }: { markdown: string }) {
         if (line.startsWith('- ') || line.startsWith('* ')) {
           return (
             <div key={index} className="flex items-start gap-2 pl-2">
-              <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-zinc-300" />
+              <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-ink-2" />
               <span>{line.slice(2)}</span>
             </div>
           )
@@ -137,27 +137,21 @@ export function ConsentPage() {
 
   return (
     <div className="mx-auto max-w-2xl">
-      <section className="rounded-2xl border border-[#243049] bg-[#141d2e] p-6 shadow-[0_18px_50px_rgba(0,0,0,0.45)] sm:p-8">
-        <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#243049] pb-4">
+      <section className="rounded-2xl border border-edge bg-panel p-6 sm:p-8">
+        <div className="flex flex-wrap items-start justify-between gap-3 border-b border-edge pb-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full border border-[#243049] bg-[#0e1626] text-white">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full border border-edge bg-well text-white">
               <FileCheck2 className="h-5 w-5" aria-hidden="true" />
             </div>
-            <div>
-              <h1 className="text-xl font-bold text-white">
-                Pemberitahuan Privasi &amp; Persetujuan Eksplisit
-              </h1>
-              <p className="text-xs text-slate-400">
-                UU Pelindungan Data Pribadi Pasal 20 — Wajib disetujui sebelum mengisi profil &amp;
-                dokumen
-              </p>
-            </div>
+            <h1 className="text-xl font-bold text-white">
+              Pemberitahuan Privasi &amp; Persetujuan Eksplisit
+            </h1>
           </div>
 
           {policyQuery.data && (
             <span
               data-testid="policy-version-badge"
-              className="rounded-full border border-[#243049] bg-[#0e1626] px-3 py-1 text-xs font-semibold text-slate-200"
+              className="rounded-full border border-edge bg-well px-3 py-1 text-xs font-semibold text-ink-2"
             >
               Versi {policyQuery.data.version}
             </span>
@@ -190,7 +184,7 @@ export function ConsentPage() {
           {policyQuery.isLoading && (
             <div
               role="status"
-              className="rounded-xl border border-[#243049] bg-[#0e1626] p-6 text-center text-sm text-slate-400"
+              className="rounded-xl border border-edge bg-well p-6 text-center text-sm text-ink-3"
             >
               Memuat teks pemberitahuan privasi terbaru...
             </div>
@@ -205,7 +199,7 @@ export function ConsentPage() {
               <button
                 type="button"
                 onClick={() => void policyQuery.refetch()}
-                className="mt-3 inline-flex items-center gap-1.5 rounded-xl border border-rose-500/40 bg-[#0e1626] px-3 py-1.5 text-xs font-semibold text-rose-200 hover:bg-rose-950"
+                className="mt-3 inline-flex items-center gap-1.5 rounded-xl border border-rose-500/40 bg-well px-3 py-1.5 text-xs font-semibold text-rose-200 hover:bg-rose-950"
               >
                 <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
                 Coba Muat Ulang
@@ -217,23 +211,23 @@ export function ConsentPage() {
             <form onSubmit={handleSubmit} className="space-y-5">
               <div
                 data-testid="policy-markdown-box"
-                className="max-h-80 overflow-y-auto rounded-xl border border-[#243049] bg-[#0e1626] p-4"
+                className="max-h-80 overflow-y-auto rounded-xl border border-edge bg-well p-4"
               >
                 <SafePolicyMarkdown markdown={policyQuery.data.text_markdown} />
               </div>
 
               <label
                 htmlFor="consent-checkbox"
-                className="flex cursor-pointer items-start gap-3 rounded-xl border border-[#243049] bg-[#0e1626]/60 p-3.5 transition hover:border-cyan-400/60"
+                className="flex cursor-pointer items-start gap-3 rounded-xl border border-edge bg-well/60 p-3.5 transition hover:border-sky/70"
               >
                 <input
                   id="consent-checkbox"
                   type="checkbox"
                   checked={agreed}
                   onChange={(e) => setAgreed(e.target.checked)}
-                  className="mt-0.5 h-4 w-4 rounded border-zinc-600 bg-[#0e1626] text-white focus:ring-zinc-400"
+                  className="mt-0.5 h-4 w-4 rounded border-edge bg-well text-white focus:ring-sky"
                 />
-                <span className="text-sm text-slate-300">
+                <span className="text-sm text-ink-2">
                   Saya telah membaca, memahami, dan secara eksplisit menyetujui pemrosesan serta
                   enkripsi data pribadi saya sesuai Pemberitahuan Privasi Schematics NIC{' '}
                   <strong className="text-white">versi {policyQuery.data.version}</strong>.

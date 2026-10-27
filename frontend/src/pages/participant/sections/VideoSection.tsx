@@ -18,14 +18,13 @@ import {
 } from '@/api'
 import { formatBytes, validateVideoFile, VIDEO_MAX_BYTES } from '@/lib/fileValidation'
 import { useAuthStore } from '@/stores/authStore'
+import {
+  BTN_PRIMARY,
+  BTN_SECONDARY,
+  CARD,
+  WELL,
+} from '@/components/ui/tokens'
 
-const CARD =
-  'rounded-2xl border border-[#243049] bg-[#141d2e] shadow-[0_18px_50px_rgba(0,0,0,0.45)]'
-const WELL = 'rounded-xl border border-[#243049] bg-[#0e1626]'
-const FOCUS =
-  'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300'
-const BTN_PRIMARY = `inline-flex cursor-pointer items-center gap-1.5 rounded-xl bg-gradient-to-r from-cyan-400 to-sky-500 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:from-cyan-300 hover:to-sky-400 disabled:cursor-not-allowed disabled:opacity-50 ${FOCUS}`
-const BTN_SECONDARY = `inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-[#243049] bg-[#0e1626] px-3.5 py-2 text-sm font-medium text-slate-200 transition hover:border-cyan-400/60 hover:text-white disabled:cursor-not-allowed disabled:opacity-50 ${FOCUS}`
 
 function describeError(error: unknown, fallback: string): string {
   return isApiClientError(error) ? error.message : fallback
@@ -202,7 +201,7 @@ export function VideoSection() {
       <div
         role="status"
         data-testid="video-loading"
-        className={`${CARD} p-6 text-center text-sm text-slate-300`}
+        className={`${CARD} p-6 text-center text-sm text-ink-2`}
       >
         Memuat status video demo tim...
       </div>
@@ -212,18 +211,9 @@ export function VideoSection() {
   return (
     <div data-testid="video-page" className="space-y-6">
       <header className="px-1">
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-[#243049] bg-[#0e1626] px-3 py-1 text-xs font-medium text-slate-300">
-          <Clapperboard className="h-3.5 w-3.5 text-slate-100" aria-hidden="true" />
-          Video Demo · Komponen Karya
-        </span>
         <h2 className="mt-2.5 text-xl font-bold tracking-tight text-white">
           Video Demo Upload &amp; Player
         </h2>
-        <p className="mt-1.5 max-w-prose text-sm text-slate-400">
-          Unggah satu video demo MP4 untuk tim Anda. Video dikirim sebagai byte mentah,
-          disimpan terenkripsi, dan diputar kembali hanya setelah server memverifikasi
-          integritasnya secara penuh.
-        </p>
       </header>
 
       {teamQuery.isError && (
@@ -240,15 +230,15 @@ export function VideoSection() {
       {!team ? (
         <section
           data-testid="video-empty-state"
-          className={`${CARD} p-6 text-sm text-slate-300`}
+          className={`${CARD} p-6 text-sm text-ink-2`}
         >
           <div className="flex items-start gap-3">
-            <Users className="mt-0.5 h-5 w-5 shrink-0 text-slate-400" aria-hidden="true" />
+            <Users className="mt-0.5 h-5 w-5 shrink-0 text-ink-3" aria-hidden="true" />
             <div>
               <p className="font-medium text-white">
                 Anda belum tergabung dalam tim mana pun.
               </p>
-              <p className="mt-1 text-slate-400">
+              <p className="mt-1 text-ink-3">
                 Video demo adalah karya tim, bukan perorangan. Buat atau gabung tim terlebih
                 dahulu di Team Workspace, lalu Ketua Tim dapat mengunggah video di halaman ini.
               </p>
@@ -261,16 +251,16 @@ export function VideoSection() {
           aria-labelledby="video-upload-heading"
           className={`${CARD} p-6`}
         >
-          <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#243049] pb-4">
+          <div className="flex flex-wrap items-start justify-between gap-3 border-b border-edge pb-4">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#243049] bg-[#0e1626] text-white">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-edge bg-well text-white">
                 <Clapperboard className="h-5 w-5" aria-hidden="true" />
               </div>
               <div>
                 <h2 id="video-upload-heading" className="text-base font-semibold text-white">
                   Video Demo Tim {team.name}
                 </h2>
-                <p className="text-sm text-slate-400">
+                <p className="text-sm text-ink-3">
                   Format MP4, ukuran maksimal {formatBytes(maxBytes)}
                 </p>
               </div>
@@ -281,7 +271,7 @@ export function VideoSection() {
                 Terunggah
               </span>
             ) : (
-              <span className="rounded-full border border-zinc-700 bg-zinc-900 px-3 py-1 text-xs font-semibold text-slate-300">
+              <span className="rounded-full border border-edge bg-panel px-3 py-1 text-xs font-semibold text-ink-2">
                 Belum Diunggah
               </span>
             )}
@@ -290,9 +280,9 @@ export function VideoSection() {
           <div className="mt-4 space-y-4">
             {video ? (
               <div className={`${WELL} px-3.5 py-3 text-sm`}>
-                <p data-testid="video-meta" className="text-slate-300">
+                <p data-testid="video-meta" className="text-ink-2">
                   <span className="font-medium text-white">{video.original_filename}</span>
-                  <span className="text-slate-400">
+                  <span className="text-ink-3">
                     {' · '}
                     <span className="tabular-nums">{formatBytes(video.size_bytes)}</span>
                     {' · '}
@@ -301,7 +291,7 @@ export function VideoSection() {
                 </p>
               </div>
             ) : (
-              <p className="text-sm text-slate-400">
+              <p className="text-sm text-ink-3">
                 Belum ada video demo yang diunggah untuk tim ini.
               </p>
             )}
@@ -320,9 +310,9 @@ export function VideoSection() {
             ) : !isLeader ? (
               <div
                 data-testid="video-not-leader-notice"
-                className={`flex items-start gap-2.5 ${WELL} px-3.5 py-3 text-sm text-slate-300`}
+                className={`flex items-start gap-2.5 ${WELL} px-3.5 py-3 text-sm text-ink-2`}
               >
-                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-ink-3" aria-hidden="true" />
                 <span>
                   Hanya Ketua Tim yang dapat mengunggah atau mengganti video demo. Anda tetap
                   dapat memutar dan mengunduh video tim di bawah ini.
@@ -330,7 +320,7 @@ export function VideoSection() {
               </div>
             ) : (
               <div>
-                <label htmlFor="file-input-video" className="text-sm font-medium text-slate-200">
+                <label htmlFor="file-input-video" className="text-sm font-medium text-ink-2">
                   {video ? 'Ganti Video Demo' : 'Pilih Video Demo'}
                 </label>
                 <input
@@ -357,7 +347,7 @@ export function VideoSection() {
                         ? 'Ganti Video'
                         : 'Unggah Video'}
                   </button>
-                  <span className="text-sm text-slate-400">
+                  <span className="text-sm text-ink-3">
                     MP4 · maksimal <span className="tabular-nums">{formatBytes(maxBytes)}</span>
                   </span>
                 </div>
@@ -367,7 +357,7 @@ export function VideoSection() {
             {progress && (
               <div data-testid="video-progress" className={`${WELL} px-3.5 py-3`}>
                 <div className="flex items-center justify-between gap-3 text-sm">
-                  <span className="text-slate-300">Mengunggah video demo</span>
+                  <span className="text-ink-2">Mengunggah video demo</span>
                   <span className="font-mono font-medium text-white tabular-nums">
                     {progress.percent === null ? '—' : `${progress.percent}%`}
                   </span>
@@ -378,14 +368,14 @@ export function VideoSection() {
                   aria-valuemax={100}
                   aria-valuenow={progress.percent ?? undefined}
                   aria-label="Progres unggahan video demo"
-                  className="mt-2 h-2 w-full overflow-hidden rounded-full bg-[#1c1c1c]"
+                  className="mt-2 h-2 w-full overflow-hidden rounded-full bg-edge-soft"
                 >
                   <div
-                    className="h-full rounded-full bg-[#ededed] transition-[width]"
+                    className="h-full rounded-full bg-sky transition-[width]"
                     style={{ width: `${progress.percent ?? 0}%` }}
                   />
                 </div>
-                <p className="mt-2 text-sm text-slate-400 tabular-nums">
+                <p className="mt-2 text-sm text-ink-3 tabular-nums">
                   {`${formatBytes(progress.loaded)} / ${formatBytes(progress.total)}`}
                 </p>
               </div>
@@ -404,7 +394,7 @@ export function VideoSection() {
           </div>
 
           {video && (
-            <div className="mt-5 border-t border-[#243049] pt-4">
+            <div className="mt-5 border-t border-edge pt-4">
               <div className="flex flex-wrap items-center gap-2.5">
                 <button
                   type="button"
@@ -426,7 +416,7 @@ export function VideoSection() {
                   <Download className="h-4 w-4" aria-hidden="true" />
                   {isDownloading ? 'Mengunduh...' : 'Unduh Video'}
                 </button>
-                <span className="text-sm text-slate-400">
+                <span className="text-sm text-ink-3">
                   Video diunduh utuh dan diverifikasi sebelum diputar.
                 </span>
               </div>
@@ -458,7 +448,7 @@ export function VideoSection() {
                   src={objectUrl}
                   controls
                   preload="metadata"
-                  className="mt-3 w-full rounded-xl border border-[#243049] bg-[#0e1626]"
+                  className="mt-3 w-full rounded-xl border border-edge bg-well"
                 >
                   <track kind="captions" />
                 </video>
