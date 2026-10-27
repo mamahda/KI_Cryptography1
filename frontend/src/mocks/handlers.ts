@@ -8,10 +8,23 @@ import {
   type Me,
   type ParticipantDocumentsResponse,
   type ParticipantProfile,
+  type PublicSettings,
   type Team,
+  type UpdateProfileRequest,
 } from '../api/types'
+import {
+  DOCUMENT_ALLOWED_MIMES,
+  detectMagicMimeFromBytes,
+  type AllowedDocumentMime,
+} from '../lib/fileValidation'
+import {
+  computeAgeFromBirthDate,
+  getChangedReverifyFields,
+  normalizeProfileInput,
+  validateProfileForm,
+} from '../lib/profileValidation'
 
-export const DEFAULT_MOCK_SETTINGS = {
+export const DEFAULT_MOCK_SETTINGS: PublicSettings = {
   registration_deadline: '2026-11-20T23:59:00+07:00',
   submission_deadline: '2026-12-05T23:59:00+07:00',
   min_team_size: 2,
@@ -37,6 +50,83 @@ Panitia Schematics NIC mengumpulkan dan melindungi data pendaftaran peserta sesu
 - Seluruh data dan file dienkripsi tiga cipher (AES-CTR, DES-CTR, dan RC4) disertai HMAC-SHA256 dan pembungkusan kunci AES-256-GCM.
 - Dokumen identitas hanya dapat dibuka oleh peserta pemilik dan superadmin (tercatat pada audit log).
 - Juri hanya dapat melihat karya tim yang telah berstatus final.`
+
+/** Minimal valid 1x1 dark PNG (68 bytes) */
+const MOCK_PNG_BYTES = Uint8Array.from([
+  0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52,
+  0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x02, 0x00, 0x00, 0x00, 0x90, 0x77, 0x53,
+  0xde, 0x00, 0x00, 0x00, 0x0c, 0x49, 0x44, 0x41, 0x54, 0x08, 0xd7, 0x63, 0x60, 0x60, 0x60, 0x00,
+  0x00, 0x00, 0x04, 0x00, 0x01, 0xf6, 0x17, 0x38, 0x55, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4e,
+  0x44, 0xae, 0x42, 0x60, 0x82,
+])
+
+/** Minimal valid 1x1 grayscale JPEG */
+const MOCK_JPEG_BYTES = Uint8Array.from([
+  0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01, 0x01, 0x01, 0x00, 0x48,
+  0x00, 0x48, 0x00, 0x00, 0xff, 0xdb, 0x00, 0x43, 0x00, 0x03, 0x02, 0x02, 0x02, 0x02, 0x02, 0x03,
+  0x02, 0x02, 0x02, 0x03, 0x03, 0x03, 0x03, 0x04, 0x06, 0x04, 0x04, 0x04, 0x04, 0x04, 0x08, 0x06,
+  0x06, 0x05, 0x06, 0x09, 0x08, 0x0a, 0x0a, 0x09, 0x08, 0x09, 0x09, 0x0a, 0x0c, 0x0f, 0x0c, 0x0a,
+  0x0b, 0x0e, 0x0b, 0x09, 0x09, 0x0d, 0x11, 0x0d, 0x0e, 0x0f, 0x10, 0x10, 0x11, 0x10, 0x0a, 0x0c,
+  0x12, 0x13, 0x12, 0x10, 0x13, 0x0f, 0x10, 0x10, 0x10, 0xff, 0xc0, 0x00, 0x0b, 0x08, 0x00, 0x01,
+  0x00, 0x01, 0x01, 0x01, 0x11, 0x00, 0xff, 0xc4, 0x00, 0x14, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x09, 0xff, 0xc4, 0x00, 0x14,
+  0x10, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0xff, 0xda, 0x00, 0x08, 0x01, 0x01, 0x00, 0x00, 0x3f, 0x00, 0xd2, 0xcf, 0x20, 0xff,
+  0xd9,
+])
+
+/** Minimal valid single-page PDF */
+const MOCK_PDF_BYTES = new TextEncoder().encode(
+  `%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>
+endobj
+4 0 obj
+<< /Length 68 >>
+stream
+BT /F1 16 Tf 72 720 Td (Schematics NIC Encrypted Document) Tj ET
+endstream
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000241 00000 n 
+0000000359 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+429
+%%EOF`,
+)
+
+function defaultBytesForContentType(contentType: string): Uint8Array {
+  if (contentType === 'image/png') {
+    return MOCK_PNG_BYTES
+  }
+  if (contentType === 'application/pdf') {
+    return MOCK_PDF_BYTES
+  }
+  return MOCK_JPEG_BYTES
+}
+
+interface MockStoredItem {
+  meta: ItemMeta
+  bytes: Uint8Array
+  ownerEmail: string
+  tampered: boolean
+}
 
 interface MockAccountRecord {
   password: string
@@ -72,8 +162,22 @@ function createEmptyDocuments(): ParticipantDocumentsResponse {
   }
 }
 
-function createInitialAccounts(policyVersion: string): Map<string, MockAccountRecord> {
-  const map = new Map<string, MockAccountRecord>()
+function createInitialAccountsAndItems(policyVersion: string): {
+  accounts: Map<string, MockAccountRecord>
+  items: Map<string, MockStoredItem>
+} {
+  const accounts = new Map<string, MockAccountRecord>()
+  const items = new Map<string, MockStoredItem>()
+
+  function registerDocItem(ownerEmail: string, meta: ItemMeta): ItemMeta {
+    items.set(meta.item_id, {
+      meta,
+      bytes: defaultBytesForContentType(meta.content_type),
+      ownerEmail,
+      tampered: false,
+    })
+    return meta
+  }
 
   const budiId = 'b1a7c2d4-5e6f-4a8b-9c0d-1e2f3a4b5c6d'
   const budiTeam: Team = {
@@ -108,7 +212,7 @@ function createInitialAccounts(policyVersion: string): Map<string, MockAccountRe
     finalize_missing: ['proposal', 'video', 'repo_url', 'members_incomplete'],
   }
 
-  map.set('budi@mahasiswa.ac.id', {
+  accounts.set('budi@mahasiswa.ac.id', {
     password: 'rahasia-panjang-123',
     user: {
       id: budiId,
@@ -144,36 +248,96 @@ function createInitialAccounts(policyVersion: string): Map<string, MockAccountRe
       verification_note: null,
     },
     documents: {
-      ktp: {
+      ktp: registerDocItem('budi@mahasiswa.ac.id', {
         item_id: '3f6c1e2a-8b4d-4c1f-9e7a-2b5d8c0f1a93',
         field: 'ktp',
         content_type: 'image/jpeg',
         size_bytes: 482_113,
         original_filename: 'ktp-budi.jpg',
         uploaded_at: '2026-10-26T10:15:00+07:00',
-      },
-      ktm: {
+      }),
+      ktm: registerDocItem('budi@mahasiswa.ac.id', {
         item_id: '4a7d2f3b-9c5e-4d2a-8f8b-3c6e9d1a2b04',
         field: 'ktm',
         content_type: 'application/pdf',
         size_bytes: 612_400,
         original_filename: 'ktm-budi.pdf',
         uploaded_at: '2026-10-26T10:17:00+07:00',
-      },
-      twibbon: {
+      }),
+      twibbon: registerDocItem('budi@mahasiswa.ac.id', {
         item_id: '5b8e3a4c-0d6f-4e3b-9a9c-4d7f0e2b3c15',
         field: 'twibbon',
         content_type: 'image/png',
         size_bytes: 924_110,
         original_filename: 'twibbon-budi.png',
         uploaded_at: '2026-10-26T10:20:00+07:00',
-      },
+      }),
       documents_complete: true,
     },
     team: budiTeam,
   })
 
-  map.set('ditolak@mahasiswa.ac.id', {
+  accounts.set('terverifikasi@mahasiswa.ac.id', {
+    password: 'rahasia-panjang-123',
+    user: {
+      id: 'a1b2c3d4-9999-4888-8777-666655554444',
+      email: 'terverifikasi@mahasiswa.ac.id',
+      role: 'peserta',
+      full_name: 'Nadia Putri',
+      verification_status: 'terverifikasi',
+      verification_note: null,
+      consent: {
+        policy_version: policyVersion,
+        agreed_at: '2026-10-26T09:10:00+07:00',
+      },
+      current_policy_version: policyVersion,
+      team: null,
+    },
+    profile: {
+      full_name: 'Nadia Putri',
+      nim: '5025221088',
+      study_program: 'Teknik Komputer',
+      institution: 'Institut Teknologi Sepuluh Nopember',
+      birth_date: '2004-11-05',
+      domicile: 'Sidoarjo',
+      phone: '+6281234567891',
+      age: 21,
+      is_minor: false,
+      profile_complete: true,
+      verification_status: 'terverifikasi',
+      verification_note: null,
+    },
+    documents: {
+      ktp: registerDocItem('terverifikasi@mahasiswa.ac.id', {
+        item_id: '9a1b2c3d-1111-4222-8333-444455556601',
+        field: 'ktp',
+        content_type: 'image/jpeg',
+        size_bytes: 310_200,
+        original_filename: 'ktp-nadia.jpg',
+        uploaded_at: '2026-10-26T10:30:00+07:00',
+      }),
+      ktm: registerDocItem('terverifikasi@mahasiswa.ac.id', {
+        item_id: '9a1b2c3d-1111-4222-8333-444455556602',
+        field: 'ktm',
+        content_type: 'application/pdf',
+        size_bytes: 420_500,
+        original_filename: 'ktm-nadia.pdf',
+        uploaded_at: '2026-10-26T10:32:00+07:00',
+      }),
+      twibbon: registerDocItem('terverifikasi@mahasiswa.ac.id', {
+        item_id: '9a1b2c3d-1111-4222-8333-444455556603',
+        field: 'twibbon',
+        content_type: 'image/png',
+        size_bytes: 512_000,
+        original_filename: 'twibbon-nadia.png',
+        uploaded_at: '2026-10-26T10:35:00+07:00',
+      }),
+      documents_complete: true,
+    },
+    team: null,
+  })
+
+  accounts.set('ditolak@mahasiswa.ac.id', {
     password: 'rahasia-panjang-123',
     user: {
       id: 'f1e2d3c4-b5a6-4789-8012-3456789abcde',
@@ -204,36 +368,36 @@ function createInitialAccounts(policyVersion: string): Map<string, MockAccountRe
       verification_note: 'Scan KTM tidak terbaca, mohon unggah ulang dokumen yang jelas.',
     },
     documents: {
-      ktp: {
+      ktp: registerDocItem('ditolak@mahasiswa.ac.id', {
         item_id: '6c9f4b5d-1e70-4f4c-8b0d-5e801f3c4d26',
         field: 'ktp',
         content_type: 'image/jpeg',
         size_bytes: 350_000,
         original_filename: 'ktp-rina.jpg',
         uploaded_at: '2026-10-26T11:00:00+07:00',
-      },
-      ktm: {
+      }),
+      ktm: registerDocItem('ditolak@mahasiswa.ac.id', {
         item_id: '7d0a5c6e-2f81-405d-9c1e-6f912a4d5e37',
         field: 'ktm',
         content_type: 'image/jpeg',
         size_bytes: 280_000,
         original_filename: 'ktm-rina-blur.jpg',
         uploaded_at: '2026-10-26T11:02:00+07:00',
-      },
-      twibbon: {
+      }),
+      twibbon: registerDocItem('ditolak@mahasiswa.ac.id', {
         item_id: '8e1b6d7f-3092-416e-8d2f-70a23b5e6f48',
         field: 'twibbon',
         content_type: 'image/png',
         size_bytes: 510_000,
         original_filename: 'twibbon-rina.png',
         uploaded_at: '2026-10-26T11:05:00+07:00',
-      },
+      }),
       documents_complete: true,
     },
     team: null,
   })
 
-  map.set('baru@mahasiswa.ac.id', {
+  accounts.set('baru@mahasiswa.ac.id', {
     password: 'rahasia-panjang-123',
     user: {
       id: 'c2b8d3e5-6f70-4b9c-8d1e-2f3a4b5c6d7e',
@@ -251,7 +415,7 @@ function createInitialAccounts(policyVersion: string): Map<string, MockAccountRe
     team: null,
   })
 
-  map.set('juri1@panitia.id', {
+  accounts.set('juri1@panitia.id', {
     password: 'sementara-12345',
     user: {
       id: 'e4d3c2b1-a098-4765-8432-10fedcba9876',
@@ -268,7 +432,7 @@ function createInitialAccounts(policyVersion: string): Map<string, MockAccountRe
     team: null,
   })
 
-  map.set('admin@panitia.id', {
+  accounts.set('admin@panitia.id', {
     password: 'superadmin-12345',
     user: {
       id: 'a0000000-0000-4000-8000-000000000001',
@@ -285,22 +449,28 @@ function createInitialAccounts(policyVersion: string): Map<string, MockAccountRe
     team: null,
   })
 
-  return map
+  return { accounts, items }
 }
 
 interface MockServerState {
+  settings: PublicSettings
   policyVersion: string
   policyMarkdown: string
   accounts: Map<string, MockAccountRecord>
+  items: Map<string, MockStoredItem>
   activeEmail: string | null
   csrfToken: string | null
   nextIdCounter: number
 }
 
+const initialSeed = createInitialAccountsAndItems(DEFAULT_POLICY_VERSION)
+
 const mockState: MockServerState = {
+  settings: structuredClone(DEFAULT_MOCK_SETTINGS),
   policyVersion: DEFAULT_POLICY_VERSION,
   policyMarkdown: DEFAULT_POLICY_MARKDOWN,
-  accounts: createInitialAccounts(DEFAULT_POLICY_VERSION),
+  accounts: initialSeed.accounts,
+  items: initialSeed.items,
   activeEmail: null,
   csrfToken: null,
   nextIdCounter: 100,
@@ -318,9 +488,12 @@ function setBrowserCsrfCookie(token: string | null): void {
 }
 
 export function resetMockState(): void {
+  const fresh = createInitialAccountsAndItems(DEFAULT_POLICY_VERSION)
+  mockState.settings = structuredClone(DEFAULT_MOCK_SETTINGS)
   mockState.policyVersion = DEFAULT_POLICY_VERSION
   mockState.policyMarkdown = DEFAULT_POLICY_MARKDOWN
-  mockState.accounts = createInitialAccounts(DEFAULT_POLICY_VERSION)
+  mockState.accounts = fresh.accounts
+  mockState.items = fresh.items
   mockState.activeEmail = null
   mockState.csrfToken = null
   mockState.nextIdCounter = 100
@@ -338,6 +511,22 @@ export function setMockPolicyVersion(version: string, markdown?: string): void {
       current_policy_version: version,
     }
   }
+}
+
+export function setMockRegistrationDeadline(deadlineIso: string): void {
+  mockState.settings = {
+    ...mockState.settings,
+    registration_deadline: deadlineIso,
+  }
+}
+
+export function tamperMockItem(itemId: string, tampered = true): boolean {
+  const stored = mockState.items.get(itemId)
+  if (!stored) {
+    return false
+  }
+  stored.tampered = tampered
+  return true
 }
 
 export function seedMockActiveSession(email: string, csrfToken = 'mock-csrf-token-001'): Me | null {
@@ -432,6 +621,11 @@ function verifyCsrf(request: Request): Response | null {
   return null
 }
 
+function isRegistrationDeadlinePassed(): boolean {
+  const targetMs = Date.parse(mockState.settings.registration_deadline)
+  return !Number.isNaN(targetMs) && Date.now() > targetMs
+}
+
 function issueSessionForEmail(email: string): { user: Me; csrfCookieHeader: string } {
   const record = mockState.accounts.get(email)!
   record.user = {
@@ -453,7 +647,7 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 export const handlers = [
   http.get('*/api/settings', () => {
-    return HttpResponse.json(DEFAULT_MOCK_SETTINGS, { status: 200 })
+    return HttpResponse.json(mockState.settings, { status: 200 })
   }),
 
   http.get('*/api/policy', () => {
@@ -691,6 +885,122 @@ export const handlers = [
     return HttpResponse.json(guard.record.profile, { status: 200 })
   }),
 
+  http.put('*/api/profile', async ({ request }) => {
+    const rawRecord = getAuthenticatedRecord()
+    if (!rawRecord) {
+      return HttpResponse.json(
+        {
+          error: {
+            code: 'unauthenticated',
+            message: 'Sesi belum aktif',
+            details: {},
+          },
+        },
+        { status: 401 },
+      )
+    }
+
+    const csrfError = verifyCsrf(request)
+    if (csrfError) {
+      return csrfError
+    }
+
+    const guard = requirePesertaWithConsent(rawRecord)
+    if (!guard.ok) {
+      return guard.response
+    }
+    const { record } = guard
+
+    if (isRegistrationDeadlinePassed()) {
+      return HttpResponse.json(
+        {
+          error: {
+            code: 'deadline_passed',
+            message: 'Tenggat pendaftaran telah terlewat.',
+            details: {},
+          },
+        },
+        { status: 409 },
+      )
+    }
+
+    const body = (await request.json().catch(() => null)) as Partial<
+      Record<keyof UpdateProfileRequest, unknown>
+    > | null
+
+    const candidate: UpdateProfileRequest = {
+      full_name: typeof body?.full_name === 'string' ? body.full_name : '',
+      nim: typeof body?.nim === 'string' ? body.nim : '',
+      study_program: typeof body?.study_program === 'string' ? body.study_program : '',
+      institution: typeof body?.institution === 'string' ? body.institution : '',
+      birth_date: typeof body?.birth_date === 'string' ? body.birth_date : '',
+      domicile: typeof body?.domicile === 'string' ? body.domicile : '',
+      phone: typeof body?.phone === 'string' ? body.phone : '',
+    }
+
+    const fieldErrors = validateProfileForm(candidate)
+    if (Object.keys(fieldErrors).length > 0) {
+      return HttpResponse.json(
+        {
+          error: {
+            code: 'validation_error',
+            message: 'Data tidak valid',
+            details: { fields: fieldErrors },
+          },
+        },
+        { status: 400 },
+      )
+    }
+
+    const normalized = normalizeProfileInput(candidate)
+    const changedSensitive = getChangedReverifyFields(record.profile, normalized)
+    const age = computeAgeFromBirthDate(normalized.birth_date)
+    const isMinor = age !== null ? age < 18 : null
+
+    let nextStatus = record.profile.verification_status
+    let nextNote = record.profile.verification_note ?? null
+
+    if (nextStatus === 'terverifikasi' && changedSensitive.length > 0) {
+      nextStatus = 'menunggu'
+      nextNote = null
+    } else if (
+      (nextStatus === 'belum_lengkap' || nextStatus === 'ditolak') &&
+      record.documents.documents_complete
+    ) {
+      nextStatus = 'menunggu'
+      nextNote = null
+    }
+
+    record.profile = {
+      ...normalized,
+      age,
+      is_minor: isMinor,
+      profile_complete: true,
+      verification_status: nextStatus,
+      verification_note: nextNote,
+    }
+
+    record.user = {
+      ...record.user,
+      full_name: normalized.full_name,
+      verification_status: nextStatus,
+      verification_note: nextNote,
+    }
+
+    if (record.team) {
+      record.team = {
+        ...record.team,
+        members: record.team.members.map((m) =>
+          m.user_id === record.user.id
+            ? { ...m, full_name: normalized.full_name, profile_complete: true }
+            : m,
+        ),
+      }
+    }
+
+    return HttpResponse.json(record.profile, { status: 200 })
+  }),
+
   http.get('*/api/documents', () => {
     const guard = requirePesertaWithConsent(getAuthenticatedRecord())
     if (!guard.ok) {
@@ -700,8 +1010,8 @@ export const handlers = [
   }),
 
   http.post('*/api/documents/:type', async ({ request, params }) => {
-    const record = getAuthenticatedRecord()
-    if (!record) {
+    const rawRecord = getAuthenticatedRecord()
+    if (!rawRecord) {
       return HttpResponse.json(
         {
           error: {
@@ -733,13 +1043,29 @@ export const handlers = [
       )
     }
 
-    const guard = requirePesertaWithConsent(record)
+    const guard = requirePesertaWithConsent(rawRecord)
     if (!guard.ok) {
       return guard.response
     }
+    const { record } = guard
 
-    const rawBytes = await request.arrayBuffer()
-    if (rawBytes.byteLength > DEFAULT_MOCK_SETTINGS.limits.document_max_bytes) {
+    if (isRegistrationDeadlinePassed()) {
+      return HttpResponse.json(
+        {
+          error: {
+            code: 'deadline_passed',
+            message: 'Tenggat pendaftaran telah terlewat.',
+            details: {},
+          },
+        },
+        { status: 409 },
+      )
+    }
+
+    const rawBuffer = await request.arrayBuffer()
+    const rawBytes = new Uint8Array(rawBuffer)
+
+    if (rawBytes.byteLength > mockState.settings.limits.document_max_bytes) {
       return HttpResponse.json(
         {
           error: {
@@ -752,7 +1078,27 @@ export const handlers = [
       )
     }
 
-    const encodedFilename = request.headers.get('X-Filename') ?? 'document.pdf'
+    const detectedMime = detectMagicMimeFromBytes(rawBytes)
+    if (
+      rawBytes.byteLength === 0 ||
+      !detectedMime ||
+      !(DOCUMENT_ALLOWED_MIMES as readonly string[]).includes(detectedMime)
+    ) {
+      return HttpResponse.json(
+        {
+          error: {
+            code: 'unsupported_type',
+            message: 'Tipe file (dari magic bytes) tidak diizinkan. Gunakan JPG, PNG, atau PDF.',
+            details: {},
+          },
+        },
+        { status: 415 },
+      )
+    }
+
+    const validatedMime = detectedMime as AllowedDocumentMime
+
+    const encodedFilename = request.headers.get('X-Filename') ?? `${docType}.pdf`
     let originalFilename = encodedFilename
     try {
       originalFilename = decodeURIComponent(encodedFilename)
@@ -760,14 +1106,26 @@ export const handlers = [
       originalFilename = encodedFilename
     }
 
+    const previousItem = record.documents[docType]
+    if (previousItem) {
+      mockState.items.delete(previousItem.item_id)
+    }
+
     const newItem: ItemMeta = {
       item_id: `11111111-2222-4333-8444-${String(++mockState.nextIdCounter).padStart(12, '0')}`,
       field: docType,
-      content_type: 'application/pdf',
+      content_type: validatedMime,
       size_bytes: rawBytes.byteLength,
       original_filename: originalFilename,
       uploaded_at: new Date().toISOString(),
     }
+
+    mockState.items.set(newItem.item_id, {
+      meta: newItem,
+      bytes: rawBytes,
+      ownerEmail: record.user.email,
+      tampered: false,
+    })
 
     record.documents = {
       ...record.documents,
@@ -785,6 +1143,15 @@ export const handlers = [
       record.user.verification_note = null
     }
 
+    if (record.team) {
+      record.team = {
+        ...record.team,
+        members: record.team.members.map((m) =>
+          m.user_id === record.user.id ? { ...m, documents_complete: docsComplete } : m,
+        ),
+      }
+    }
+
     return HttpResponse.json(
       {
         ...newItem,
@@ -792,6 +1159,77 @@ export const handlers = [
       },
       { status: 201 },
     )
+  }),
+
+  http.get('*/api/items/:itemId', ({ request, params }) => {
+    const record = getAuthenticatedRecord()
+    if (!record) {
+      return HttpResponse.json(
+        {
+          error: {
+            code: 'unauthenticated',
+            message: 'Sesi belum aktif atau sudah kedaluwarsa',
+            details: {},
+          },
+        },
+        { status: 401 },
+      )
+    }
+
+    const itemId = String(params.itemId)
+    const stored = mockState.items.get(itemId)
+
+    const canAccess =
+      stored &&
+      (record.user.role === 'superadmin' ||
+        (record.user.role === 'peserta' && stored.ownerEmail === record.user.email))
+
+    if (!stored || !canAccess) {
+      return HttpResponse.json(
+        {
+          error: {
+            code: 'not_found',
+            message: 'File tidak ditemukan atau Anda tidak memiliki hak akses.',
+            details: {},
+          },
+        },
+        { status: 404 },
+      )
+    }
+
+    if (stored.tampered) {
+      return HttpResponse.json(
+        {
+          error: {
+            code: 'integrity_error',
+            message: 'HMAC atau pencocokan tiga cipher gagal; insiden dicatat.',
+            details: {},
+          },
+        },
+        { status: 500 },
+      )
+    }
+
+    const url = new URL(request.url)
+    const isDownload = url.searchParams.get('download') === '1'
+    const dispositionType = isDownload ? 'attachment' : 'inline'
+    const encodedName = encodeURIComponent(stored.meta.original_filename)
+
+    const payloadBuffer = stored.bytes.buffer.slice(
+      stored.bytes.byteOffset,
+      stored.bytes.byteOffset + stored.bytes.byteLength,
+    ) as ArrayBuffer
+
+    return new HttpResponse(payloadBuffer, {
+      status: 200,
+      headers: {
+        'Content-Type': stored.meta.content_type,
+        'Content-Length': String(stored.bytes.byteLength),
+        'Content-Disposition': `${dispositionType}; filename*=UTF-8''${encodedName}`,
+        'Cache-Control': 'no-store',
+        'X-Content-Type-Options': 'nosniff',
+      },
+    })
   }),
 
   http.get('*/api/teams/me', () => {

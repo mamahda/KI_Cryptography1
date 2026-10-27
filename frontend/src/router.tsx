@@ -21,7 +21,9 @@ import { BenchmarksPage } from './pages/admin/BenchmarksPage'
 import { ConsentPage } from './pages/auth/ConsentPage'
 import { LoginPage } from './pages/auth/LoginPage'
 import { RegisterPage } from './pages/auth/RegisterPage'
+import { DocumentManagerPage } from './pages/participant/DocumentManagerPage'
 import { ParticipantDashboardPage } from './pages/participant/ParticipantDashboardPage'
+import { ProfilePage } from './pages/participant/ProfilePage'
 import { useAuthStore } from './stores/authStore'
 import { useUiStore } from './stores/uiStore'
 
@@ -311,24 +313,8 @@ export function AppRoutes() {
           <Route element={<RoleGuard allowedRoles={['peserta']} />}>
             <Route element={<ConsentGuard />}>
               <Route path="/dashboard" element={<ParticipantDashboardPage />} />
-              <Route
-                path="/profile"
-                element={
-                  <RoutePlaceholder
-                    title="Encrypted Personal Profile"
-                    description="Participant 7-field personal data form (Phase 2)."
-                  />
-                }
-              />
-              <Route
-                path="/documents"
-                element={
-                  <RoutePlaceholder
-                    title="Document Manager"
-                    description="KTP, KTM/KRSM, and Twibbon upload, preview, and download (Phase 2)."
-                  />
-                }
-              />
+              <Route path="/profile" element={<ProfilePage />} />
+              <Route path="/documents" element={<DocumentManagerPage />} />
               <Route
                 path="/team"
                 element={
