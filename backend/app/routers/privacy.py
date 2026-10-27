@@ -67,8 +67,10 @@ def withdraw_consent(
     settings: Settings = Depends(get_settings),
     _csrf: None = Depends(require_csrf),
 ) -> None:
+    # Ambil nama file terenkripsi sebelum baris items (dan ciphertexts) ikut terhapus.
     paths = db.execute(
-        "SELECT path FROM items WHERE owner_user_id = ? AND path IS NOT NULL",
+        "SELECT c.path FROM ciphertexts c JOIN items i ON i.id = c.item_id "
+        "WHERE i.owner_user_id = ? AND c.path IS NOT NULL",
         (current_user.id,),
     ).fetchall()
     db.execute(
