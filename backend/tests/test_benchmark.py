@@ -192,6 +192,7 @@ def test_database_crypto_operations_record_live_timings(tmp_path, monkeypatch):
         assert load_plaintext(db, "item") == b"data"
         rows = db.execute("SELECT * FROM benchmark_runs").fetchall()
     assert {row["source"] for row in rows} == {"live"}
-    assert len(rows) == 3 * 3 + 2
+    assert len(rows) == 3 * 3 + 3 * 2  # simpan: 3 cipher; baca: dekripsi ketiganya
+    assert {row["cipher"] for row in rows if row["operation"] == "dec"} == {"aes", "des", "rc4"}
     assert {row["field"] for row in rows} == {"full_name"}
     get_settings.cache_clear()
