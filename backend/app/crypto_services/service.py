@@ -1,7 +1,7 @@
 """Fasad kripto: satu objek yang dipegang aplikasi.
 
 CryptoService tidak tahu soal SQLite, FastAPI, ataupun .env. Ia hanya menerima
-ROOT_KEY, daftar cipher yang aktif, dan cipher utama (yang dipakai saat membaca).
+ROOT_KEY dan daftar cipher yang aktif.
 """
 
 from collections.abc import Sequence
@@ -21,7 +21,6 @@ class CryptoService:
         *,
         key_version: int = 1,
         ciphers: Sequence[str] = CIPHER_NAMES,
-        primary_cipher: str = "aes",
     ) -> None:
         self._keyring = Keyring(root_key, key_version)
         self.ciphers: tuple[str, ...] = tuple(dict.fromkeys(ciphers))
@@ -29,11 +28,6 @@ class CryptoService:
             raise KeyConfigError("Minimal satu cipher harus aktif")
         for name in self.ciphers:
             get_suite(name)  # UnknownCipherError kalau salah ketik
-        if primary_cipher not in self.ciphers:
-            raise KeyConfigError(
-                f"Cipher utama '{primary_cipher}' harus termasuk cipher aktif {self.ciphers}"
-            )
-        self.primary_cipher = primary_cipher
         self.key_version = key_version
 
     def seal(
