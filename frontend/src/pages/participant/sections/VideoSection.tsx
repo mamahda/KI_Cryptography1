@@ -20,18 +20,18 @@ import { formatBytes, validateVideoFile, VIDEO_MAX_BYTES } from '@/lib/fileValid
 import { useAuthStore } from '@/stores/authStore'
 
 const CARD =
-  'rounded-xl border border-[#222] bg-[#121212] shadow-[0_10px_40px_rgba(0,0,0,0.8)]'
-const WELL = 'rounded-lg border border-[#222] bg-black'
+  'rounded-2xl border border-[#243049] bg-[#141d2e] shadow-[0_18px_50px_rgba(0,0,0,0.45)]'
+const WELL = 'rounded-xl border border-[#243049] bg-[#0e1626]'
 const FOCUS =
-  'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-100'
-const BTN_PRIMARY = `inline-flex cursor-pointer items-center gap-1.5 rounded-md bg-[#ededed] px-4 py-2 text-sm font-semibold text-black transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50 ${FOCUS}`
-const BTN_SECONDARY = `inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-[#333] bg-black px-3.5 py-2 text-sm font-medium text-zinc-200 transition hover:border-zinc-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-50 ${FOCUS}`
+  'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300'
+const BTN_PRIMARY = `inline-flex cursor-pointer items-center gap-1.5 rounded-xl bg-gradient-to-r from-cyan-400 to-sky-500 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:from-cyan-300 hover:to-sky-400 disabled:cursor-not-allowed disabled:opacity-50 ${FOCUS}`
+const BTN_SECONDARY = `inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-[#243049] bg-[#0e1626] px-3.5 py-2 text-sm font-medium text-slate-200 transition hover:border-cyan-400/60 hover:text-white disabled:cursor-not-allowed disabled:opacity-50 ${FOCUS}`
 
 function describeError(error: unknown, fallback: string): string {
   return isApiClientError(error) ? error.message : fallback
 }
 
-export function VideoUploadPage() {
+export function VideoSection() {
   const user = useAuthStore((state) => state.user)
   const queryClient = useQueryClient()
 
@@ -49,7 +49,7 @@ export function VideoUploadPage() {
   const [isDownloading, setIsDownloading] = useState(false)
 
   const teamQuery = useQuery({
-    queryKey: ['team', 'me'],
+    queryKey: ['teams', 'me'],
     queryFn: ({ signal }) => apiClient.teams.getMine(signal),
   })
 
@@ -94,11 +94,10 @@ export function VideoUploadPage() {
       setPlaybackError(null)
       setIsIntegrityFailure(false)
       if (team) {
-        queryClient.setQueryData(['team', 'me'], {
+        queryClient.setQueryData(['teams', 'me'], {
           team: { ...team, submission: { ...team.submission, video: uploaded } },
         })
       }
-      void queryClient.invalidateQueries({ queryKey: ['team', 'me'] })
       void queryClient.invalidateQueries({ queryKey: ['teams', 'me'] })
     },
     onError: (error) => {
@@ -203,7 +202,7 @@ export function VideoUploadPage() {
       <div
         role="status"
         data-testid="video-loading"
-        className={`${CARD} p-6 text-center text-sm text-zinc-300`}
+        className={`${CARD} p-6 text-center text-sm text-slate-300`}
       >
         Memuat status video demo tim...
       </div>
@@ -212,15 +211,15 @@ export function VideoUploadPage() {
 
   return (
     <div data-testid="video-page" className="space-y-6">
-      <header className={`${CARD} p-6`}>
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-[#333] bg-black px-3 py-1 text-xs font-medium text-zinc-300">
-          <Clapperboard className="h-3.5 w-3.5 text-zinc-100" aria-hidden="true" />
+      <header className="px-1">
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-[#243049] bg-[#0e1626] px-3 py-1 text-xs font-medium text-slate-300">
+          <Clapperboard className="h-3.5 w-3.5 text-slate-100" aria-hidden="true" />
           Video Demo · Komponen Karya
         </span>
-        <h1 className="mt-2.5 text-2xl font-bold tracking-tight text-white">
+        <h2 className="mt-2.5 text-xl font-bold tracking-tight text-white">
           Video Demo Upload &amp; Player
-        </h1>
-        <p className="mt-1.5 max-w-prose text-sm text-zinc-400">
+        </h2>
+        <p className="mt-1.5 max-w-prose text-sm text-slate-400">
           Unggah satu video demo MP4 untuk tim Anda. Video dikirim sebagai byte mentah,
           disimpan terenkripsi, dan diputar kembali hanya setelah server memverifikasi
           integritasnya secara penuh.
@@ -231,7 +230,7 @@ export function VideoUploadPage() {
         <div
           role="alert"
           data-testid="video-team-error"
-          className="flex items-center gap-2.5 rounded-xl border border-amber-500/40 bg-amber-950/40 px-5 py-4 text-sm text-amber-200"
+          className="flex items-center gap-2.5 rounded-2xl border border-amber-500/40 bg-amber-950/40 px-5 py-4 text-sm text-amber-200"
         >
           <AlertCircle className="h-4 w-4 shrink-0 text-amber-400" aria-hidden="true" />
           Status tim gagal dimuat dari server.
@@ -241,15 +240,15 @@ export function VideoUploadPage() {
       {!team ? (
         <section
           data-testid="video-empty-state"
-          className={`${CARD} p-6 text-sm text-zinc-300`}
+          className={`${CARD} p-6 text-sm text-slate-300`}
         >
           <div className="flex items-start gap-3">
-            <Users className="mt-0.5 h-5 w-5 shrink-0 text-zinc-400" aria-hidden="true" />
+            <Users className="mt-0.5 h-5 w-5 shrink-0 text-slate-400" aria-hidden="true" />
             <div>
               <p className="font-medium text-white">
                 Anda belum tergabung dalam tim mana pun.
               </p>
-              <p className="mt-1 text-zinc-400">
+              <p className="mt-1 text-slate-400">
                 Video demo adalah karya tim, bukan perorangan. Buat atau gabung tim terlebih
                 dahulu di Team Workspace, lalu Ketua Tim dapat mengunggah video di halaman ini.
               </p>
@@ -262,16 +261,16 @@ export function VideoUploadPage() {
           aria-labelledby="video-upload-heading"
           className={`${CARD} p-6`}
         >
-          <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#222] pb-4">
+          <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#243049] pb-4">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#333] bg-black text-white">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#243049] bg-[#0e1626] text-white">
                 <Clapperboard className="h-5 w-5" aria-hidden="true" />
               </div>
               <div>
                 <h2 id="video-upload-heading" className="text-base font-semibold text-white">
                   Video Demo Tim {team.name}
                 </h2>
-                <p className="text-sm text-zinc-400">
+                <p className="text-sm text-slate-400">
                   Format MP4, ukuran maksimal {formatBytes(maxBytes)}
                 </p>
               </div>
@@ -282,7 +281,7 @@ export function VideoUploadPage() {
                 Terunggah
               </span>
             ) : (
-              <span className="rounded-full border border-zinc-700 bg-zinc-900 px-3 py-1 text-xs font-semibold text-zinc-300">
+              <span className="rounded-full border border-zinc-700 bg-zinc-900 px-3 py-1 text-xs font-semibold text-slate-300">
                 Belum Diunggah
               </span>
             )}
@@ -291,9 +290,9 @@ export function VideoUploadPage() {
           <div className="mt-4 space-y-4">
             {video ? (
               <div className={`${WELL} px-3.5 py-3 text-sm`}>
-                <p data-testid="video-meta" className="text-zinc-300">
+                <p data-testid="video-meta" className="text-slate-300">
                   <span className="font-medium text-white">{video.original_filename}</span>
-                  <span className="text-zinc-400">
+                  <span className="text-slate-400">
                     {' · '}
                     <span className="tabular-nums">{formatBytes(video.size_bytes)}</span>
                     {' · '}
@@ -302,7 +301,7 @@ export function VideoUploadPage() {
                 </p>
               </div>
             ) : (
-              <p className="text-sm text-zinc-400">
+              <p className="text-sm text-slate-400">
                 Belum ada video demo yang diunggah untuk tim ini.
               </p>
             )}
@@ -310,7 +309,7 @@ export function VideoUploadPage() {
             {isLocked ? (
               <div
                 data-testid="video-locked-notice"
-                className="flex items-start gap-2.5 rounded-lg border border-emerald-500/30 bg-emerald-950/25 px-3.5 py-3 text-sm text-emerald-100"
+                className="flex items-start gap-2.5 rounded-xl border border-emerald-500/30 bg-emerald-950/25 px-3.5 py-3 text-sm text-emerald-100"
               >
                 <Lock className="mt-0.5 h-4 w-4 shrink-0 text-emerald-300" aria-hidden="true" />
                 <span>
@@ -321,9 +320,9 @@ export function VideoUploadPage() {
             ) : !isLeader ? (
               <div
                 data-testid="video-not-leader-notice"
-                className={`flex items-start gap-2.5 ${WELL} px-3.5 py-3 text-sm text-zinc-300`}
+                className={`flex items-start gap-2.5 ${WELL} px-3.5 py-3 text-sm text-slate-300`}
               >
-                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-zinc-400" aria-hidden="true" />
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
                 <span>
                   Hanya Ketua Tim yang dapat mengunggah atau mengganti video demo. Anda tetap
                   dapat memutar dan mengunduh video tim di bawah ini.
@@ -331,7 +330,7 @@ export function VideoUploadPage() {
               </div>
             ) : (
               <div>
-                <label htmlFor="file-input-video" className="text-sm font-medium text-zinc-200">
+                <label htmlFor="file-input-video" className="text-sm font-medium text-slate-200">
                   {video ? 'Ganti Video Demo' : 'Pilih Video Demo'}
                 </label>
                 <input
@@ -358,7 +357,7 @@ export function VideoUploadPage() {
                         ? 'Ganti Video'
                         : 'Unggah Video'}
                   </button>
-                  <span className="text-sm text-zinc-400">
+                  <span className="text-sm text-slate-400">
                     MP4 · maksimal <span className="tabular-nums">{formatBytes(maxBytes)}</span>
                   </span>
                 </div>
@@ -368,7 +367,7 @@ export function VideoUploadPage() {
             {progress && (
               <div data-testid="video-progress" className={`${WELL} px-3.5 py-3`}>
                 <div className="flex items-center justify-between gap-3 text-sm">
-                  <span className="text-zinc-300">Mengunggah video demo</span>
+                  <span className="text-slate-300">Mengunggah video demo</span>
                   <span className="font-mono font-medium text-white tabular-nums">
                     {progress.percent === null ? '—' : `${progress.percent}%`}
                   </span>
@@ -386,7 +385,7 @@ export function VideoUploadPage() {
                     style={{ width: `${progress.percent ?? 0}%` }}
                   />
                 </div>
-                <p className="mt-2 text-sm text-zinc-400 tabular-nums">
+                <p className="mt-2 text-sm text-slate-400 tabular-nums">
                   {`${formatBytes(progress.loaded)} / ${formatBytes(progress.total)}`}
                 </p>
               </div>
@@ -396,7 +395,7 @@ export function VideoUploadPage() {
               <div
                 role="alert"
                 data-testid="video-error"
-                className="flex items-start gap-2.5 rounded-lg border border-rose-500/40 bg-rose-950/35 px-3.5 py-3 text-sm text-rose-100"
+                className="flex items-start gap-2.5 rounded-xl border border-rose-500/40 bg-rose-950/35 px-3.5 py-3 text-sm text-rose-100"
               >
                 <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-300" aria-hidden="true" />
                 <span>{uploadError}</span>
@@ -405,7 +404,7 @@ export function VideoUploadPage() {
           </div>
 
           {video && (
-            <div className="mt-5 border-t border-[#222] pt-4">
+            <div className="mt-5 border-t border-[#243049] pt-4">
               <div className="flex flex-wrap items-center gap-2.5">
                 <button
                   type="button"
@@ -427,7 +426,7 @@ export function VideoUploadPage() {
                   <Download className="h-4 w-4" aria-hidden="true" />
                   {isDownloading ? 'Mengunduh...' : 'Unduh Video'}
                 </button>
-                <span className="text-sm text-zinc-400">
+                <span className="text-sm text-slate-400">
                   Video diunduh utuh dan diverifikasi sebelum diputar.
                 </span>
               </div>
@@ -436,7 +435,7 @@ export function VideoUploadPage() {
                 <div
                   role="alert"
                   data-testid="video-player-error"
-                  className="mt-3 flex items-start gap-2.5 rounded-lg border border-rose-500/40 bg-rose-950/35 px-3.5 py-3 text-sm text-rose-100"
+                  className="mt-3 flex items-start gap-2.5 rounded-xl border border-rose-500/40 bg-rose-950/35 px-3.5 py-3 text-sm text-rose-100"
                 >
                   <ShieldAlert
                     className="mt-0.5 h-4 w-4 shrink-0 text-rose-300"
@@ -459,7 +458,7 @@ export function VideoUploadPage() {
                   src={objectUrl}
                   controls
                   preload="metadata"
-                  className="mt-3 w-full rounded-lg border border-[#222] bg-black"
+                  className="mt-3 w-full rounded-xl border border-[#243049] bg-[#0e1626]"
                 >
                   <track kind="captions" />
                 </video>

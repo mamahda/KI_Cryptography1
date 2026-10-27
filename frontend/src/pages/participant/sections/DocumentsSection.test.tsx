@@ -66,7 +66,7 @@ describe('DocumentManagerPage (/documents)', () => {
     useAuthStore.getState().setSessionUser(sessionUser)
 
     renderWithProviders(<AppRoutes />, {
-      routerProps: { initialEntries: ['/documents'] },
+      routerProps: { initialEntries: ['/dashboard'] },
     })
 
     const ktmCard = await screen.findByTestId('document-card-ktm')
@@ -115,7 +115,7 @@ describe('DocumentManagerPage (/documents)', () => {
 
     try {
       renderWithProviders(<AppRoutes />, {
-        routerProps: { initialEntries: ['/documents'] },
+        routerProps: { initialEntries: ['/dashboard'] },
       })
 
       // 1. Preview JPEG KTP -> renders <img> inside modal
@@ -164,7 +164,7 @@ describe('DocumentManagerPage (/documents)', () => {
     tamperMockItem('3f6c1e2a-8b4d-4c1f-9e7a-2b5d8c0f1a93', true)
 
     renderWithProviders(<AppRoutes />, {
-      routerProps: { initialEntries: ['/documents'] },
+      routerProps: { initialEntries: ['/dashboard'] },
     })
 
     await user.click(await screen.findByTestId('doc-preview-btn-ktp'))

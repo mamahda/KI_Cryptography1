@@ -45,7 +45,7 @@ describe('computeCountdown helper', () => {
 })
 
 describe('ParticipantDashboardPage', () => {
-  it('renders deadline countdowns, dual status cards (menunggu + draft team), and quick navigation', async () => {
+  it('renders deadline countdowns, dual status cards (menunggu + draft team), and every submission section', async () => {
     const sessionUser = seedMockActiveSession('budi@mahasiswa.ac.id')!
     useAuthStore.getState().setSessionUser(sessionUser)
 
@@ -81,27 +81,17 @@ describe('ParticipantDashboardPage', () => {
 
     expect(screen.queryByTestId('rejection-alert')).not.toBeInTheDocument()
 
-    const quickNav = screen.getByTestId('quick-navigation-grid')
-    expect(within(quickNav).getByRole('link', { name: /Profil Pribadi/i })).toHaveAttribute(
-      'href',
-      '/profile',
-    )
-    expect(within(quickNav).getByRole('link', { name: /Document Manager/i })).toHaveAttribute(
-      'href',
-      '/documents',
-    )
-    expect(within(quickNav).getByRole('link', { name: /Team Workspace/i })).toHaveAttribute(
-      'href',
-      '/team',
-    )
-    expect(within(quickNav).getByRole('link', { name: /Video Demo Upload/i })).toHaveAttribute(
-      'href',
-      '/video',
-    )
-    expect(within(quickNav).getByRole('link', { name: /Encryption Inspector/i })).toHaveAttribute(
-      'href',
-      '/encryption-inspector',
-    )
+    // Documents, team and video are sections of this same page now.
+    expect(screen.getByRole('heading', { name: /Document Manager/i })).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: /Team & Submission Workspace/i }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: /Video Demo Upload & Player/i }),
+    ).toBeInTheDocument()
+    expect(screen.getByTestId('documents-section')).toBeInTheDocument()
+    expect(screen.getByTestId('team-section')).toBeInTheDocument()
+    expect(screen.getByTestId('video-section')).toBeInTheDocument()
   })
 
   it('displays Tenggat Terlewat badge when competition deadlines are in the past', async () => {
@@ -126,8 +116,7 @@ describe('ParticipantDashboardPage', () => {
     expect(within(regCard).getByText('Tenggat Terlewat')).toBeInTheDocument()
   })
 
-  it('shows rejection reason alert (ditolak), Belum Bertim card, and navigates to /documents on CTA click', async () => {
-    const user = userEvent.setup()
+  it('shows rejection reason alert (ditolak), Belum Bertim card, and links the CTA to the documents section', async () => {
     const sessionUser = seedMockActiveSession('ditolak@mahasiswa.ac.id')!
     useAuthStore.getState().setSessionUser(sessionUser)
 
@@ -148,7 +137,9 @@ describe('ParticipantDashboardPage', () => {
     expect(await screen.findByTestId('verification-status-badge')).toHaveTextContent('Ditolak')
     expect(await screen.findByTestId('team-status-badge')).toHaveTextContent('Belum Bertim')
 
-    await user.click(within(rejectionAlert).getByRole('link', { name: /Unggah Ulang Dokumen/i }))
+    expect(
+      within(rejectionAlert).getByRole('link', { name: /Unggah Ulang Dokumen/i }),
+    ).toHaveAttribute('href', '#documents-section')
     expect(
       await screen.findByRole('heading', { name: /Document Manager/i }),
     ).toBeInTheDocument()
@@ -159,11 +150,10 @@ describe('ParticipantDashboardPage', () => {
     const sessionUser = seedMockActiveSession('budi@mahasiswa.ac.id')!
     useAuthStore.getState().setSessionUser(sessionUser)
 
-    let failOnce = true
+    let failing = true
     server.use(
       http.get('*/api/teams/me', () => {
-        if (failOnce) {
-          failOnce = false
+        if (failing) {
           return HttpResponse.json(
             {
               error: {
@@ -184,6 +174,7 @@ describe('ParticipantDashboardPage', () => {
     })
 
     const errorBanner = await screen.findByTestId('dashboard-error-alert')
+    failing = false
     await user.click(within(errorBanner).getByRole('button', { name: /Coba Muat Ulang/i }))
 
     await waitFor(() => {

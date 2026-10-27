@@ -2,12 +2,12 @@ import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { apiClient, type ItemMeta } from '../../api'
-import { seedMockActiveSession, setMockTeamStatus } from '../../mocks/handlers'
-import { server } from '../../mocks/server'
-import { AppRoutes } from '../../router'
-import { useAuthStore } from '../../stores/authStore'
-import { renderWithProviders } from '../../test/test-utils'
+import { apiClient, type ItemMeta } from '@/api'
+import { seedMockActiveSession, setMockTeamStatus } from '@/mocks/handlers'
+import { server } from '@/mocks/server'
+import { AppRoutes } from '@/router'
+import { useAuthStore } from '@/stores/authStore'
+import { renderWithProviders } from '@/test/test-utils'
 
 const BLOB_URL = 'blob:http://localhost:5173/mock-video-blob'
 
@@ -51,7 +51,7 @@ function signInAs(email: string) {
 }
 
 function renderVideoPage() {
-  return renderWithProviders(<AppRoutes />, { routerProps: { initialEntries: ['/video'] } })
+  return renderWithProviders(<AppRoutes />, { routerProps: { initialEntries: ['/dashboard'] } })
 }
 
 describe('Video Demo Upload & Player', () => {

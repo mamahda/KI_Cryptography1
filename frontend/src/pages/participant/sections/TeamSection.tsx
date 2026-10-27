@@ -67,7 +67,7 @@ function ReadinessChip({ ready, label }: { ready: boolean; label: string }) {
       className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs ${
         ready
           ? 'border-emerald-500/30 bg-emerald-950/30 text-emerald-200'
-          : 'border-[#2a2a2a] bg-[#121212] text-zinc-500'
+          : 'border-[#1e293f] bg-[#141d2e] text-slate-400'
       }`}
     >
       {ready ? (
@@ -80,7 +80,7 @@ function ReadinessChip({ ready, label }: { ready: boolean; label: string }) {
   )
 }
 
-export function TeamWorkspacePage() {
+export function TeamSection() {
   const queryClient = useQueryClient()
   const currentUserId = useAuthStore((state) => state.user?.id ?? null)
 
@@ -99,7 +99,7 @@ export function TeamWorkspacePage() {
   const [finalizeOpen, setFinalizeOpen] = useState(false)
 
   const teamQuery = useQuery({
-    queryKey: ['team', 'me'],
+    queryKey: ['teams', 'me'],
     queryFn: ({ signal }) => apiClient.teams.getMine(signal),
   })
 
@@ -109,7 +109,7 @@ export function TeamWorkspacePage() {
   const readyMembersCount = team ? team.members.filter(isMemberReady).length : 0
 
   function applyTeam(next: Team | null) {
-    queryClient.setQueryData(['team', 'me'], { team: next })
+    queryClient.setQueryData(['teams', 'me'], { team: next })
     setPendingConfirm(null)
     setActionError(null)
   }
@@ -153,7 +153,7 @@ export function TeamWorkspacePage() {
       if (team) {
         applyTeam({ ...team, submission: { ...team.submission, proposal: uploaded } })
       }
-      void queryClient.invalidateQueries({ queryKey: ['team', 'me'] })
+      void queryClient.invalidateQueries({ queryKey: ['teams', 'me'] })
     },
     onError: (error) => {
       setProposalPercent(null)
@@ -168,7 +168,7 @@ export function TeamWorkspacePage() {
       if (team) {
         applyTeam({ ...team, submission: { ...team.submission, repo_url } })
       }
-      void queryClient.invalidateQueries({ queryKey: ['team', 'me'] })
+      void queryClient.invalidateQueries({ queryKey: ['teams', 'me'] })
     },
     onError: (error) => {
       setRepoError(describeError(error, 'Link repositori gagal disimpan.'))
@@ -278,7 +278,7 @@ export function TeamWorkspacePage() {
     return (
       <section
         data-testid="team-workspace-page"
-        className="rounded-xl border border-[#222] bg-[#121212] p-6 text-sm text-zinc-400"
+        className="rounded-2xl border border-[#243049] bg-[#141d2e] p-6 text-sm text-slate-400"
       >
         Memuat data tim...
       </section>
@@ -289,17 +289,17 @@ export function TeamWorkspacePage() {
     return (
       <section
         data-testid="team-workspace-page"
-        className="rounded-xl border border-[#222] bg-[#121212] p-6"
+        className="rounded-2xl border border-[#243049] bg-[#141d2e] p-6"
       >
         <div
           data-testid="team-error-alert"
-          className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-red-500/30 bg-red-950/30 px-4 py-3 text-sm text-red-200"
+          className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-500/30 bg-red-950/30 px-4 py-3 text-sm text-red-200"
         >
           <span>{describeError(teamQuery.error, 'Data tim gagal dimuat.')}</span>
           <button
             type="button"
             onClick={() => void teamQuery.refetch()}
-            className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-red-500/40 px-2.5 py-1.5 text-xs font-medium text-red-100 transition hover:bg-red-950/50"
+            className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-red-500/40 px-2.5 py-1.5 text-xs font-medium text-red-100 transition hover:bg-red-950/50"
           >
             <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
             Coba Muat Ulang
@@ -311,24 +311,22 @@ export function TeamWorkspacePage() {
 
   return (
     <section data-testid="team-workspace-page" className="space-y-5">
-      <header className="rounded-xl border border-[#222] bg-[#121212] p-6 shadow-[0_10px_40px_rgba(0,0,0,0.8)]">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-white">
-              Team &amp; Submission Workspace
-            </h1>
-            <p className="mt-1.5 text-sm text-zinc-400">
-              Buat tim baru atau gabung dengan kode tim 8 karakter dari ketua tim Anda.
-            </p>
-          </div>
-          <Users className="h-8 w-8 text-zinc-600" aria-hidden="true" />
+      <header className="flex items-start gap-3 px-1">
+        <Users className="mt-1 h-6 w-6 shrink-0 text-cyan-300" aria-hidden="true" />
+        <div>
+          <h2 className="text-xl font-bold tracking-tight text-white">
+            Team &amp; Submission Workspace
+          </h2>
+          <p className="mt-1 text-sm text-slate-400">
+            Buat tim baru atau gabung dengan kode tim 8 karakter dari ketua tim Anda.
+          </p>
         </div>
       </header>
 
       {actionError && (
         <div
           data-testid="team-error-alert"
-          className="flex items-start gap-2.5 rounded-lg border border-red-500/30 bg-red-950/30 px-4 py-3 text-sm text-red-200"
+          className="flex items-start gap-2.5 rounded-xl border border-red-500/30 bg-red-950/30 px-4 py-3 text-sm text-red-200"
         >
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
           <span>{actionError}</span>
@@ -339,17 +337,17 @@ export function TeamWorkspacePage() {
         <div data-testid="team-empty-state" className="grid gap-5 md:grid-cols-2">
           <form
             onSubmit={handleCreate}
-            className="rounded-xl border border-[#222] bg-[#121212] p-6 shadow-[0_10px_40px_rgba(0,0,0,0.8)]"
+            className="rounded-2xl border border-[#243049] bg-[#141d2e] p-6 shadow-[0_18px_50px_rgba(0,0,0,0.45)]"
           >
             <h2 className="flex items-center gap-2 text-lg font-semibold text-white">
-              <UserPlus className="h-4.5 w-4.5 text-zinc-400" aria-hidden="true" />
+              <UserPlus className="h-4.5 w-4.5 text-slate-400" aria-hidden="true" />
               Buat Tim Baru
             </h2>
-            <p className="mt-1.5 text-sm text-zinc-400">
+            <p className="mt-1.5 text-sm text-slate-400">
               Anda akan menjadi ketua tim dan menerima kode tim untuk dibagikan.
             </p>
 
-            <label htmlFor="team-name" className="mt-4 block text-sm font-medium text-zinc-300">
+            <label htmlFor="team-name" className="mt-4 block text-sm font-medium text-slate-300">
               Nama Tim
             </label>
             <input
@@ -360,13 +358,13 @@ export function TeamWorkspacePage() {
               maxLength={50}
               onChange={(event) => setTeamName(event.target.value)}
               placeholder="Tim Garuda"
-              className="mt-1.5 w-full rounded-md border border-[#333] bg-black px-3 py-2 text-sm text-zinc-100 outline-none transition focus:border-zinc-500"
+              className="mt-1.5 w-full rounded-xl border border-[#243049] bg-[#0e1626] px-3 py-2 text-sm text-slate-100 outline-none transition focus:border-zinc-500"
             />
 
             <button
               type="submit"
               disabled={isBusy}
-              className="mt-4 inline-flex cursor-pointer items-center gap-1.5 rounded-md bg-[#ededed] px-4 py-2 text-sm font-medium text-black transition hover:bg-white disabled:opacity-50"
+              className="mt-4 inline-flex cursor-pointer items-center gap-1.5 rounded-xl bg-gradient-to-r from-cyan-400 to-sky-500 px-4 py-2.5 text-sm font-medium text-slate-950 transition hover:from-cyan-300 hover:to-sky-400 disabled:opacity-50"
             >
               <UserPlus className="h-4 w-4" aria-hidden="true" />
               {createMutation.isPending ? 'Membuat Tim...' : 'Buat Tim'}
@@ -375,19 +373,19 @@ export function TeamWorkspacePage() {
 
           <form
             onSubmit={handleJoin}
-            className="rounded-xl border border-[#222] bg-[#121212] p-6 shadow-[0_10px_40px_rgba(0,0,0,0.8)]"
+            className="rounded-2xl border border-[#243049] bg-[#141d2e] p-6 shadow-[0_18px_50px_rgba(0,0,0,0.45)]"
           >
             <h2 className="flex items-center gap-2 text-lg font-semibold text-white">
-              <LogIn className="h-4.5 w-4.5 text-zinc-400" aria-hidden="true" />
+              <LogIn className="h-4.5 w-4.5 text-slate-400" aria-hidden="true" />
               Gabung Tim
             </h2>
-            <p className="mt-1.5 text-sm text-zinc-400">
+            <p className="mt-1.5 text-sm text-slate-400">
               Masukkan kode tim 8 karakter. Huruf besar-kecil tidak dibedakan.
             </p>
 
             <label
               htmlFor="invite-code-input"
-              className="mt-4 block text-sm font-medium text-zinc-300"
+              className="mt-4 block text-sm font-medium text-slate-300"
             >
               Kode Tim
             </label>
@@ -400,13 +398,13 @@ export function TeamWorkspacePage() {
               autoComplete="off"
               onChange={(event) => setInviteCode(event.target.value)}
               placeholder="K7M2Q9XA"
-              className="mt-1.5 w-full rounded-md border border-[#333] bg-black px-3 py-2 font-mono text-sm tracking-widest text-zinc-100 uppercase outline-none transition focus:border-zinc-500"
+              className="mt-1.5 w-full rounded-xl border border-[#243049] bg-[#0e1626] px-3 py-2 font-mono text-sm tracking-widest text-slate-100 uppercase outline-none transition focus:border-zinc-500"
             />
 
             <button
               type="submit"
               disabled={isBusy}
-              className="mt-4 inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-[#333] bg-black px-4 py-2 text-sm font-medium text-white transition hover:border-zinc-500 disabled:opacity-50"
+              className="mt-4 inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-[#243049] bg-[#0e1626] px-4 py-2 text-sm font-medium text-white transition hover:border-cyan-400/60 disabled:opacity-50"
             >
               <LogIn className="h-4 w-4" aria-hidden="true" />
               {joinMutation.isPending ? 'Menggabungkan...' : 'Gabung Tim'}
@@ -416,7 +414,7 @@ export function TeamWorkspacePage() {
           {formError && (
             <p
               data-testid="team-form-error"
-              className="rounded-lg border border-red-500/30 bg-red-950/30 px-4 py-3 text-sm text-red-200 md:col-span-2"
+              className="rounded-xl border border-red-500/30 bg-red-950/30 px-4 py-3 text-sm text-red-200 md:col-span-2"
             >
               {formError}
             </p>
@@ -425,29 +423,29 @@ export function TeamWorkspacePage() {
       ) : (
         <div
           data-testid="team-card"
-          className="rounded-xl border border-[#222] bg-[#121212] p-6 shadow-[0_10px_40px_rgba(0,0,0,0.8)]"
+          className="rounded-2xl border border-[#243049] bg-[#141d2e] p-6 shadow-[0_18px_50px_rgba(0,0,0,0.45)]"
         >
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h2 className="text-xl font-semibold text-white">{team.name}</h2>
-              <p className="mt-1 text-xs text-zinc-400">
+              <p className="mt-1 text-xs text-slate-400">
                 Peran Anda: {isLeader ? 'Ketua Tim' : 'Anggota'}
               </p>
             </div>
             <span
-              data-testid="team-status-badge"
+              data-testid="team-section-status-badge"
               className={`rounded-full border px-3 py-1 text-xs font-medium ${TEAM_STATUS_COPY[team.status].className}`}
             >
               {TEAM_STATUS_COPY[team.status].label}
             </span>
           </div>
 
-          <div className="mt-5 flex flex-wrap items-center gap-3 rounded-lg border border-[#222] bg-black px-3.5 py-3">
+          <div className="mt-5 flex flex-wrap items-center gap-3 rounded-xl border border-[#243049] bg-[#0e1626] px-3.5 py-3">
             <div>
-              <p className="text-xs text-zinc-500">Kode Tim</p>
+              <p className="text-xs text-slate-400">Kode Tim</p>
               <code
                 data-testid="invite-code"
-                className="mt-0.5 block rounded bg-[#18181b] px-2 py-1 font-mono text-base tracking-[0.3em] text-zinc-100"
+                className="mt-0.5 block rounded bg-[#18181b] px-2 py-1 font-mono text-base tracking-[0.3em] text-slate-100"
               >
                 {team.code}
               </code>
@@ -455,7 +453,7 @@ export function TeamWorkspacePage() {
             <button
               type="button"
               onClick={() => void handleCopyCode()}
-              className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-[#333] bg-[#121212] px-3 py-1.5 text-xs font-medium text-zinc-200 transition hover:border-zinc-500 hover:text-white"
+              className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-[#243049] bg-[#141d2e] px-3 py-1.5 text-xs font-medium text-slate-200 transition hover:border-cyan-400/60 hover:text-white"
             >
               {codeCopied ? (
                 <Check className="h-3.5 w-3.5 text-emerald-400" aria-hidden="true" />
@@ -469,7 +467,7 @@ export function TeamWorkspacePage() {
           {isLocked && (
             <p
               data-testid="team-locked-notice"
-              className="mt-4 flex items-start gap-2.5 rounded-lg border border-emerald-500/30 bg-emerald-950/20 px-3.5 py-3 text-sm text-emerald-200"
+              className="mt-4 flex items-start gap-2.5 rounded-xl border border-emerald-500/30 bg-emerald-950/20 px-3.5 py-3 text-sm text-emerald-200"
             >
               <Lock className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
               Tim sudah final dan terkunci untuk penjurian. Keanggotaan tidak dapat diubah lagi.
@@ -477,12 +475,12 @@ export function TeamWorkspacePage() {
           )}
 
           <div className="mt-6 flex flex-wrap items-center justify-between gap-2">
-            <h3 className="text-sm font-semibold text-zinc-300">Kesiapan Anggota</h3>
+            <h3 className="text-sm font-semibold text-slate-300">Kesiapan Anggota</h3>
             <span
               data-testid="member-readiness-summary"
-              className="inline-flex items-center gap-1.5 text-xs font-medium text-zinc-300"
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-300"
             >
-              <FileCheck2 className="h-3.5 w-3.5 text-zinc-500" aria-hidden="true" />
+              <FileCheck2 className="h-3.5 w-3.5 text-slate-400" aria-hidden="true" />
               {readyMembersCount}/{team.members.length} anggota lengkap
             </span>
           </div>
@@ -498,9 +496,9 @@ export function TeamWorkspacePage() {
                 <li
                   key={member.user_id}
                   data-testid="member-row"
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[#222] bg-black px-3.5 py-2.5 text-sm"
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[#243049] bg-[#0e1626] px-3.5 py-2.5 text-sm"
                 >
-                  <span className="flex flex-wrap items-center gap-2 text-zinc-200">
+                  <span className="flex flex-wrap items-center gap-2 text-slate-200">
                     {displayName}
                     {member.is_leader && (
                       <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-950/30 px-2 py-0.5 text-xs text-amber-200">
@@ -508,7 +506,7 @@ export function TeamWorkspacePage() {
                         Ketua
                       </span>
                     )}
-                    {isSelf && <span className="text-xs text-zinc-500">(Anda)</span>}
+                    {isSelf && <span className="text-xs text-slate-400">(Anda)</span>}
                     <ReadinessChip ready={member.profile_complete} label="Profil" />
                     <ReadinessChip ready={member.documents_complete} label="Dokumen" />
                   </span>
@@ -521,14 +519,14 @@ export function TeamWorkspacePage() {
                             type="button"
                             disabled={isBusy}
                             onClick={() => removeMemberMutation.mutate(member.user_id)}
-                            className="cursor-pointer rounded-md border border-red-500/40 bg-red-950/40 px-2.5 py-1 text-xs font-medium text-red-100 transition hover:bg-red-950/60 disabled:opacity-50"
+                            className="cursor-pointer rounded-xl border border-red-500/40 bg-red-950/40 px-2.5 py-1 text-xs font-medium text-red-100 transition hover:bg-red-950/60 disabled:opacity-50"
                           >
                             Ya, Keluarkan
                           </button>
                           <button
                             type="button"
                             onClick={() => setPendingConfirm(null)}
-                            className="cursor-pointer rounded-md border border-[#333] px-2.5 py-1 text-xs text-zinc-300 transition hover:border-zinc-500"
+                            className="cursor-pointer rounded-xl border border-[#243049] px-2.5 py-1 text-xs text-slate-300 transition hover:border-cyan-400/60"
                           >
                             Batal
                           </button>
@@ -540,7 +538,7 @@ export function TeamWorkspacePage() {
                           onClick={() =>
                             setPendingConfirm({ kind: 'kick', userId: member.user_id })
                           }
-                          className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-[#333] px-2.5 py-1 text-xs text-zinc-300 transition hover:border-red-500/50 hover:text-red-200"
+                          className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-[#243049] px-2.5 py-1 text-xs text-slate-300 transition hover:border-red-500/50 hover:text-red-200"
                         >
                           <UserMinus className="h-3.5 w-3.5" aria-hidden="true" />
                           Keluarkan
@@ -556,29 +554,29 @@ export function TeamWorkspacePage() {
           {isLeader && (
             <div
               data-testid="leader-submission-section"
-              className="mt-6 space-y-4 border-t border-[#222] pt-5"
+              className="mt-6 space-y-4 border-t border-[#243049] pt-5"
             >
-              <h3 className="text-sm font-semibold text-zinc-300">Submission Ketua Tim</h3>
+              <h3 className="text-sm font-semibold text-slate-300">Submission Ketua Tim</h3>
 
               {/* Proposal PDF (max 10 MB) */}
-              <div className="rounded-lg border border-[#222] bg-black px-3.5 py-3">
+              <div className="rounded-xl border border-[#243049] bg-[#0e1626] px-3.5 py-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="flex items-center gap-2 text-sm text-zinc-300">
-                    <FileText className="h-4 w-4 text-zinc-500" aria-hidden="true" />
+                  <span className="flex items-center gap-2 text-sm text-slate-300">
+                    <FileText className="h-4 w-4 text-slate-400" aria-hidden="true" />
                     Proposal PDF
                   </span>
-                  <span className="text-xs text-zinc-500">
+                  <span className="text-xs text-slate-400">
                     Maksimal {formatBytes(PROPOSAL_MAX_BYTES)}
                   </span>
                 </div>
 
                 {team.submission.proposal ? (
-                  <p data-testid="proposal-meta" className="mt-2 text-xs text-zinc-400">
+                  <p data-testid="proposal-meta" className="mt-2 text-xs text-slate-400">
                     {team.submission.proposal.original_filename} ·{' '}
                     {formatBytes(team.submission.proposal.size_bytes)}
                   </p>
                 ) : (
-                  <p className="mt-2 text-xs text-zinc-500">Belum ada proposal yang diunggah.</p>
+                  <p className="mt-2 text-xs text-slate-400">Belum ada proposal yang diunggah.</p>
                 )}
 
                 {!isLocked && (
@@ -596,7 +594,7 @@ export function TeamWorkspacePage() {
                       type="button"
                       disabled={isBusy}
                       onClick={() => proposalInputRef.current?.click()}
-                      className="mt-3 inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-[#333] bg-[#121212] px-3 py-1.5 text-xs font-medium text-zinc-200 transition hover:border-zinc-500 hover:text-white disabled:opacity-50"
+                      className="mt-3 inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-[#243049] bg-[#141d2e] px-3 py-1.5 text-xs font-medium text-slate-200 transition hover:border-cyan-400/60 hover:text-white disabled:opacity-50"
                     >
                       <Upload className="h-3.5 w-3.5" aria-hidden="true" />
                       {team.submission.proposal ? 'Ganti Proposal' : 'Unggah Proposal'}
@@ -619,7 +617,7 @@ export function TeamWorkspacePage() {
                 {proposalError && (
                   <p
                     data-testid="proposal-error"
-                    className="mt-2 rounded-md border border-red-500/30 bg-red-950/30 px-2.5 py-1.5 text-xs text-red-200"
+                    className="mt-2 rounded-xl border border-red-500/30 bg-red-950/30 px-2.5 py-1.5 text-xs text-red-200"
                   >
                     {proposalError}
                   </p>
@@ -627,25 +625,25 @@ export function TeamWorkspacePage() {
               </div>
 
               {/* GitHub repository URL */}
-              <div className="rounded-lg border border-[#222] bg-black px-3.5 py-3">
-                <span className="flex items-center gap-2 text-sm text-zinc-300">
-                  <GitBranch className="h-4 w-4 text-zinc-500" aria-hidden="true" />
+              <div className="rounded-xl border border-[#243049] bg-[#0e1626] px-3.5 py-3">
+                <span className="flex items-center gap-2 text-sm text-slate-300">
+                  <GitBranch className="h-4 w-4 text-slate-400" aria-hidden="true" />
                   Repositori GitHub
                 </span>
 
                 {team.submission.repo_url ? (
-                  <p data-testid="repo-url-value" className="mt-2 break-all text-xs text-zinc-400">
+                  <p data-testid="repo-url-value" className="mt-2 break-all text-xs text-slate-400">
                     {team.submission.repo_url}
                   </p>
                 ) : (
-                  <p className="mt-2 text-xs text-zinc-500">Belum ada link repositori.</p>
+                  <p className="mt-2 text-xs text-slate-400">Belum ada link repositori.</p>
                 )}
 
                 {!isLocked && (
                   <form onSubmit={handleRepoSubmit} className="mt-3">
                     <label
                       htmlFor="repo-url-input"
-                      className="block text-xs font-medium text-zinc-400"
+                      className="block text-xs font-medium text-slate-400"
                     >
                       URL Repositori GitHub
                     </label>
@@ -657,12 +655,12 @@ export function TeamWorkspacePage() {
                         value={repoUrl}
                         onChange={(event) => setRepoUrl(event.target.value)}
                         placeholder="https://github.com/tim-garuda/schematics-app"
-                        className="min-w-0 flex-1 rounded-md border border-[#333] bg-black px-3 py-2 text-sm text-zinc-100 outline-none transition focus:border-zinc-500"
+                        className="min-w-0 flex-1 rounded-xl border border-[#243049] bg-[#0e1626] px-3 py-2 text-sm text-slate-100 outline-none transition focus:border-zinc-500"
                       />
                       <button
                         type="submit"
                         disabled={isBusy}
-                        className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-[#333] bg-[#121212] px-3 py-2 text-xs font-medium text-zinc-200 transition hover:border-zinc-500 hover:text-white disabled:opacity-50"
+                        className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-[#243049] bg-[#141d2e] px-3 py-2 text-xs font-medium text-slate-200 transition hover:border-cyan-400/60 hover:text-white disabled:opacity-50"
                       >
                         {repoMutation.isPending ? 'Menyimpan...' : 'Simpan Link'}
                       </button>
@@ -673,7 +671,7 @@ export function TeamWorkspacePage() {
                 {repoError && (
                   <p
                     data-testid="repo-error"
-                    className="mt-2 rounded-md border border-red-500/30 bg-red-950/30 px-2.5 py-1.5 text-xs text-red-200"
+                    className="mt-2 rounded-xl border border-red-500/30 bg-red-950/30 px-2.5 py-1.5 text-xs text-red-200"
                   >
                     {repoError}
                   </p>
@@ -682,9 +680,9 @@ export function TeamWorkspacePage() {
 
               {/* finalize_missing checklist + two-step finalize */}
               {!isLocked && (
-                <div className="rounded-lg border border-[#222] bg-black px-3.5 py-3">
-                  <span className="flex items-center gap-2 text-sm text-zinc-300">
-                    <ListChecks className="h-4 w-4 text-zinc-500" aria-hidden="true" />
+                <div className="rounded-xl border border-[#243049] bg-[#0e1626] px-3.5 py-3">
+                  <span className="flex items-center gap-2 text-sm text-slate-300">
+                    <ListChecks className="h-4 w-4 text-slate-400" aria-hidden="true" />
                     Syarat Submit Final
                   </span>
 
@@ -699,7 +697,7 @@ export function TeamWorkspacePage() {
                   ) : (
                     <ul
                       data-testid="finalize-checklist"
-                      className="mt-2 list-inside list-disc space-y-0.5 text-xs text-zinc-400"
+                      className="mt-2 list-inside list-disc space-y-0.5 text-xs text-slate-400"
                     >
                       {team.finalize_missing.map((item) => (
                         <li key={item}>{FINALIZE_MISSING_LABELS[item]}</li>
@@ -711,7 +709,7 @@ export function TeamWorkspacePage() {
                     type="button"
                     disabled={isBusy || team.finalize_missing.length > 0}
                     onClick={() => setFinalizeOpen(true)}
-                    className="mt-3 inline-flex cursor-pointer items-center gap-1.5 rounded-md bg-[#ededed] px-4 py-2 text-sm font-medium text-black transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-40"
+                    className="mt-3 inline-flex cursor-pointer items-center gap-1.5 rounded-xl bg-gradient-to-r from-cyan-400 to-sky-500 px-4 py-2.5 text-sm font-medium text-slate-950 transition hover:from-cyan-300 hover:to-sky-400 disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     <Send className="h-4 w-4" aria-hidden="true" />
                     Submit Final
@@ -727,22 +725,22 @@ export function TeamWorkspacePage() {
               role="dialog"
               aria-modal="true"
               aria-labelledby="finalize-modal-title"
-              className="fixed inset-0 z-40 flex items-center justify-center bg-black/80 px-4"
+              className="fixed inset-0 z-40 flex items-center justify-center bg-[#0e1626]/80 px-4"
             >
-              <div className="w-full max-w-md rounded-xl border border-[#222] bg-[#121212] p-6 shadow-[0_10px_40px_rgba(0,0,0,0.9)]">
+              <div className="w-full max-w-md rounded-2xl border border-[#243049] bg-[#141d2e] p-6 shadow-[0_10px_40px_rgba(0,0,0,0.9)]">
                 <h2 id="finalize-modal-title" className="text-lg font-semibold text-white">
                   Konfirmasi Submit Final
                 </h2>
-                <p className="mt-2 text-sm text-zinc-400">
+                <p className="mt-2 text-sm text-slate-400">
                   Setelah submit final, data tim dan seluruh berkas submission{' '}
-                  <strong className="text-zinc-200">terkunci permanen</strong> dan diteruskan ke
+                  <strong className="text-slate-200">terkunci permanen</strong> dan diteruskan ke
                   juri. Keanggotaan, proposal, video, dan link repositori tidak dapat diubah lagi.
                 </p>
                 <div className="mt-5 flex flex-wrap justify-end gap-2.5">
                   <button
                     type="button"
                     onClick={() => setFinalizeOpen(false)}
-                    className="cursor-pointer rounded-md border border-[#333] px-3.5 py-2 text-sm text-zinc-300 transition hover:border-zinc-500"
+                    className="cursor-pointer rounded-xl border border-[#243049] px-3.5 py-2 text-sm text-slate-300 transition hover:border-cyan-400/60"
                   >
                     Batal
                   </button>
@@ -760,31 +758,31 @@ export function TeamWorkspacePage() {
           )}
 
           {!isLocked && (
-            <div className="mt-6 border-t border-[#222] pt-4">
+            <div className="mt-6 border-t border-[#243049] pt-4">
               {isLeader ? (
                 // The contract has no leader exit: POST /api/teams/me/leave answers
                 // 409 leader_cannot_leave, so offer no button that can only fail.
-                <p data-testid="leader-cannot-leave-notice" className="text-xs text-zinc-400">
+                <p data-testid="leader-cannot-leave-notice" className="text-xs text-slate-400">
                   Sebagai ketua, Anda tidak dapat keluar dari tim. Keluarkan anggota lain lebih
                   dahulu bila tim perlu dibubarkan.
                 </p>
               ) : pendingConfirm?.kind === 'leave' ? (
                 <div className="flex flex-wrap items-center gap-2.5">
-                  <p className="text-sm text-zinc-300">
+                  <p className="text-sm text-slate-300">
                     Keluar dari tim ini? Anda bisa bergabung lagi dengan kode tim.
                   </p>
                   <button
                     type="button"
                     disabled={isBusy}
                     onClick={() => leaveMutation.mutate()}
-                    className="cursor-pointer rounded-md border border-red-500/40 bg-red-950/40 px-3 py-1.5 text-xs font-medium text-red-100 transition hover:bg-red-950/60 disabled:opacity-50"
+                    className="cursor-pointer rounded-xl border border-red-500/40 bg-red-950/40 px-3 py-1.5 text-xs font-medium text-red-100 transition hover:bg-red-950/60 disabled:opacity-50"
                   >
                     Ya, Keluar
                   </button>
                   <button
                     type="button"
                     onClick={() => setPendingConfirm(null)}
-                    className="cursor-pointer rounded-md border border-[#333] px-3 py-1.5 text-xs text-zinc-300 transition hover:border-zinc-500"
+                    className="cursor-pointer rounded-xl border border-[#243049] px-3 py-1.5 text-xs text-slate-300 transition hover:border-cyan-400/60"
                   >
                     Batal
                   </button>
@@ -793,7 +791,7 @@ export function TeamWorkspacePage() {
                 <button
                   type="button"
                   onClick={() => setPendingConfirm({ kind: 'leave' })}
-                  className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-[#333] px-3 py-1.5 text-xs font-medium text-zinc-300 transition hover:border-red-500/50 hover:text-red-200"
+                  className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-[#243049] px-3 py-1.5 text-xs font-medium text-slate-300 transition hover:border-red-500/50 hover:text-red-200"
                 >
                   <DoorOpen className="h-3.5 w-3.5" aria-hidden="true" />
                   Keluar dari Tim
