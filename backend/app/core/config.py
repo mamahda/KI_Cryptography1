@@ -15,7 +15,7 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    root_key: str
+    root_key: str | None = None
     jwt_secret_key: str
     jwt_cookie_secure: bool = False
 
