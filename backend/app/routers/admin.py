@@ -13,8 +13,9 @@ from pydantic import BaseModel, EmailStr, Field, model_validator
 
 from app.core.security import CurrentUser, password_hasher, require_csrf, require_roles
 from app.db.audit import log_action
-from app.db.items import read_item
+from app.db.items import read_item, shred_field, write_item
 from app.db.settings_store import get_setting, set_setting
+from app.db.users import create_user, email_taken, get_email
 from app.db.views import documents_data, profile_data, public_settings, team_data
 from app.dependencies import get_db
 
@@ -63,7 +64,7 @@ def participant_detail(db: sqlite3.Connection, user_id: str) -> dict:
     ).fetchone()
     return {
         "user_id": user_id,
-        "email": user["email"],
+        "email": get_email(db, user_id),
         "profile": profile,
         "documents": documents_data(db, user_id),
         "verification_status": user["verification_status"],
@@ -152,14 +153,24 @@ def verify_participant(
         "UPDATE users SET verification_status = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?",
         (body.verification_status, user_id),
     )
+    # Catatan admin terenkripsi sebagai item `verification_note` milik peserta;
+    # tabel verification_events hanya menyimpan kode alasan dan id item catatannya.
+    note_item_id = None
+    if (body.note or "").strip():
+        note_item_id = write_item(
+            db, owner_user_id=user_id, field="verification_note", value=body.note
+        )
+    else:
+        shred_field(db, owner_user_id=user_id, field="verification_note")
     db.execute(
-        "INSERT INTO verification_events (id, user_id, admin_id, decision, reason) VALUES (?, ?, ?, ?, ?)",
+        "INSERT INTO verification_events (id, user_id, admin_id, decision, reason_code, note_item_id) VALUES (?, ?, ?, ?, ?, ?)",
         (
             str(uuid4()),
             user_id,
             current_user.id,
             body.verification_status,
-            body.note or "",
+            "approved" if body.verification_status == "terverifikasi" else "rejected",
+            note_item_id,
         ),
     )
     log_action(
@@ -216,9 +227,18 @@ def list_juri(
     db: sqlite3.Connection = Depends(get_db),
 ) -> dict:
     rows = db.execute(
-        "SELECT id AS user_id, email, created_at FROM users WHERE role = 'juri' AND disabled = 0 ORDER BY created_at"
+        "SELECT id AS user_id, created_at FROM users WHERE role = 'juri' AND disabled = 0 ORDER BY created_at"
     ).fetchall()
-    return {"juri": [dict(row) for row in rows]}
+    return {
+        "juri": [
+            {
+                "user_id": row["user_id"],
+                "email": get_email(db, row["user_id"]),
+                "created_at": row["created_at"],
+            }
+            for row in rows
+        ]
+    }
 
 
 @router.post("/juri", status_code=201)
@@ -229,14 +249,17 @@ def create_judge_account(
     _csrf: None = Depends(require_csrf),
 ) -> dict:
     email = body.email.strip().lower()
-    if db.execute("SELECT 1 FROM users WHERE email = ?", (email,)).fetchone():
+    if email_taken(db, email):
         raise HTTPException(
             409, {"code": "email_taken", "message": "Email sudah terdaftar"}
         )
-    user_id = str(uuid4())
-    db.execute(
-        "INSERT INTO users (id, email, password_hash, role, verification_status, must_change_password) VALUES (?, ?, ?, 'juri', 'terverifikasi', 1)",
-        (user_id, email, password_hasher.hash(body.password)),
+    user_id = create_user(
+        db,
+        email=email,
+        password_hash=password_hasher.hash(body.password),
+        role="juri",
+        verification_status="terverifikasi",
+        must_change_password=True,
     )
     log_action(
         db, actor_id=current_user.id, action="create_juri", subject_user_id=user_id
@@ -338,11 +361,17 @@ def list_audit_logs(
         f"SELECT COUNT(*) FROM audit_logs a WHERE {where}", args
     ).fetchone()[0]
     rows = db.execute(
-        f"SELECT a.*, u.email AS actor_email, u.role AS actor_role FROM audit_logs a LEFT JOIN users u ON u.id = a.actor_id WHERE {where} ORDER BY a.created_at DESC LIMIT ? OFFSET ?",
+        f"SELECT a.*, u.role AS actor_role FROM audit_logs a LEFT JOIN users u ON u.id = a.actor_id WHERE {where} ORDER BY a.created_at DESC LIMIT ? OFFSET ?",
         [*args, page_size, (page - 1) * page_size],
     ).fetchall()
+    items = []
+    for row in rows:
+        entry = dict(row)
+        # Email aktor terenkripsi di items, jadi didekripsi per baris (bukan lewat JOIN).
+        entry["actor_email"] = get_email(db, row["actor_id"]) if row["actor_id"] else None
+        items.append(entry)
     return {
-        "items": [dict(row) for row in rows],
+        "items": items,
         "page": page,
         "page_size": page_size,
         "total": total,

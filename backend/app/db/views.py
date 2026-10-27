@@ -3,8 +3,9 @@
 import sqlite3
 from datetime import date
 
-from app.db.items import get_active_item, read_item
+from app.db.items import get_active_item, read_item, read_original_filename, read_text
 from app.db.settings_store import get_setting
+from app.db.users import get_email
 
 PROFILE_FIELDS = (
     "full_name",
@@ -18,7 +19,7 @@ PROFILE_FIELDS = (
 DOCUMENT_FIELDS = ("ktp", "ktm", "twibbon")
 
 
-def item_meta(item: sqlite3.Row | None) -> dict | None:
+def item_meta(db: sqlite3.Connection, item: sqlite3.Row | None) -> dict | None:
     if item is None:
         return None
     return {
@@ -26,7 +27,7 @@ def item_meta(item: sqlite3.Row | None) -> dict | None:
         "field": item["field"],
         "content_type": item["content_type"] or "text/plain",
         "size_bytes": item["size_bytes"],
-        "original_filename": item["original_filename"] or item["path"] or item["field"],
+        "original_filename": read_original_filename(db, item["id"]) or item["field"],
         "uploaded_at": item["created_at"],
     }
 
@@ -52,7 +53,7 @@ def profile_data(db: sqlite3.Connection, user_id: str) -> dict:
         except ValueError:
             pass
     note = db.execute(
-        "SELECT reason FROM verification_events WHERE user_id = ? ORDER BY created_at DESC, rowid DESC LIMIT 1",
+        "SELECT note_item_id FROM verification_events WHERE user_id = ? ORDER BY created_at DESC, rowid DESC LIMIT 1",
         (user_id,),
     ).fetchone()
     return {
@@ -61,13 +62,18 @@ def profile_data(db: sqlite3.Connection, user_id: str) -> dict:
         "is_minor": age < 18 if age is not None else None,
         "profile_complete": all(values.values()),
         "verification_status": user["verification_status"],
-        "verification_note": note["reason"] if note else None,
+        # Catatan terenkripsi (item `verification_note`); "" kalau keputusan terakhir tanpa catatan.
+        "verification_note": (
+            (read_text(db, note["note_item_id"]) if note["note_item_id"] else "")
+            if note
+            else None
+        ),
     }
 
 
 def documents_data(db: sqlite3.Connection, user_id: str) -> dict:
     documents = {
-        field: item_meta(get_active_item(db, owner_user_id=user_id, field=field))
+        field: item_meta(db, get_active_item(db, owner_user_id=user_id, field=field))
         for field in DOCUMENT_FIELDS
     }
     return {**documents, "documents_complete": all(documents.values())}
@@ -93,7 +99,9 @@ def team_data(db: sqlite3.Connection, team: sqlite3.Row) -> dict:
             }
         )
     submission = {
-        field: item_meta(get_active_item(db, owner_team_id=team["id"], field=field))
+        field: item_meta(
+            db, get_active_item(db, owner_team_id=team["id"], field=field)
+        )
         for field in ("proposal", "video")
     }
     submission["repo_url"] = read_item(db, owner_team_id=team["id"], field="repo_url")
@@ -131,7 +139,7 @@ def me_data(db: sqlite3.Connection, user_id: str) -> dict:
     ).fetchone()
     return {
         "id": user_id,
-        "email": user["email"],
+        "email": get_email(db, user_id),
         "role": user["role"],
         "full_name": read_item(db, owner_user_id=user_id, field="full_name"),
         "verification_status": user["verification_status"]

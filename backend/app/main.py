@@ -1,7 +1,6 @@
 """Entry point FastAPI. Jalankan dengan `python run.py` dari folder backend/."""
 
 from contextlib import asynccontextmanager, closing
-from uuid import uuid4
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
@@ -10,9 +9,11 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from slowapi.errors import RateLimitExceeded
 
 from app.core.config import get_settings
+from app.core.crypto import get_crypto_service
 from app.core.limiter import limiter
 from app.core.security import password_hasher
 from app.db.database import connect_db, migrate_db
+from app.db.users import create_user, email_taken
 from app.routers import (
     account,
     admin,
@@ -35,23 +36,22 @@ def _seed_superadmin() -> None:
         return
 
     with closing(connect_db(settings.database_path_abs)) as connection:
-        email = settings.superadmin_email.strip().lower()
-        existing = connection.execute(
-            "SELECT id FROM users WHERE email = ?", (email,)
-        ).fetchone()
-        if existing is not None:
+        if email_taken(connection, settings.superadmin_email):
             return
 
-        connection.execute(
-            "INSERT INTO users (id, email, password_hash, role, verification_status) "
-            "VALUES (?, ?, ?, 'superadmin', 'terverifikasi')",
-            (str(uuid4()), email, password_hasher.hash(settings.superadmin_password)),
+        create_user(
+            connection,
+            email=settings.superadmin_email,
+            password_hash=password_hasher.hash(settings.superadmin_password),
+            role="superadmin",
+            verification_status="terverifikasi",
         )
         connection.commit()
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    get_crypto_service()  # gagal cepat kalau ROOT_KEY kosong/pendek
     migrate_db(settings.database_path_abs)
     settings.storage_dir_abs.mkdir(parents=True, exist_ok=True)
     _seed_superadmin()

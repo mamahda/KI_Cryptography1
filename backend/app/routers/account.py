@@ -2,6 +2,7 @@
 
 import io
 import json
+import mimetypes
 import sqlite3
 import zipfile
 
@@ -9,6 +10,7 @@ from fastapi import APIRouter, Depends, Query, Response
 
 from app.core.config import Settings, get_settings
 from app.core.security import CurrentUser, get_current_user, require_roles
+from app.db.items import read_file, read_original_filename
 from app.db.views import item_meta, me_data, profile_data, public_settings
 from app.dependencies import get_db
 
@@ -33,11 +35,13 @@ def my_items(
     current_user: CurrentUser = Depends(require_roles("peserta")),
     db: sqlite3.Connection = Depends(get_db),
 ) -> dict:
+    # Item pendukung (email, catatan verifikasi, nama file asli) bukan data yang diunggah peserta.
     rows = db.execute(
-        "SELECT * FROM items WHERE owner_user_id = ? AND shredded_at IS NULL",
+        "SELECT * FROM items WHERE owner_user_id = ? AND shredded_at IS NULL "
+        "AND parent_item_id IS NULL AND field NOT IN ('email', 'verification_note')",
         (current_user.id,),
     ).fetchall()
-    return {"items": [item_meta(row) for row in rows]}
+    return {"items": [item_meta(db, row) for row in rows]}
 
 
 @router.get("/me/access-log")
@@ -81,12 +85,20 @@ def export_data(
             ),
         )
         for row in db.execute(
-            "SELECT * FROM items WHERE owner_user_id = ? AND storage = 'fs' AND shredded_at IS NULL",
+            "SELECT * FROM items WHERE owner_user_id = ? AND storage = 'fs' "
+            "AND shredded_at IS NULL AND parent_item_id IS NULL",
             (current_user.id,),
-        ):
-            archive.write(
-                settings.storage_dir_abs / row["path"],
-                f"{row['field']}/{row['id']}.{row['path'].rsplit('.', 1)[-1]}",
+        ).fetchall():
+            # File di storage/ terenkripsi; ekspor harus berisi file aslinya.
+            name = read_original_filename(db, row["id"]) or ""
+            ext = (
+                name.rsplit(".", 1)[-1].lower()
+                if "." in name
+                else (mimetypes.guess_extension(row["content_type"] or "") or ".bin").lstrip(".")
+            )
+            archive.writestr(
+                f"{row['field']}/{row['id']}.{ext}",
+                read_file(db, row["id"], settings.storage_dir_abs),
             )
     return Response(
         buffer.getvalue(),
