@@ -15,7 +15,7 @@ class EncryptedPayload:
     """Hasil enkripsi satu pesan.
 
     nonce: None untuk RC4 (stream cipher tanpa nonce).
-    tag:   HMAC-SHA256 (32 byte); b"" hanya untuk data RC4 lama.
+    tag:   HMAC-SHA256 (32 byte) untuk ketiga cipher.
     """
 
     nonce: bytes | None
@@ -28,7 +28,7 @@ class CipherSuite:
     """Deskripsi satu metode enkripsi.
 
     enc_key_len / mac_key_len: panjang kunci data yang dibutuhkan (byte).
-    mac_key_len = 0 berarti tidak ada HMAC.
+    mac_key_len = 0 berarti tidak ada HMAC (tidak dipakai cipher bawaan).
     encrypt(plaintext, enc_key, mac_key, aad) -> EncryptedPayload
     decrypt(payload, enc_key, mac_key, aad)   -> plaintext; IntegrityError jika HMAC gagal
     """
