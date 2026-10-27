@@ -1979,6 +1979,75 @@ export const handlers = [
     return HttpResponse.json(newItem, { status: 201 })
   }),
 
+  http.post('*/api/teams/me/video', async ({ request }) => {
+    const gate = requireSubmissionLeader(request)
+    if (!gate.ok) {
+      return gate.response
+    }
+    const { record, team } = gate
+
+    const rawBytes = new Uint8Array(await request.arrayBuffer())
+
+    if (rawBytes.byteLength > mockState.settings.limits.video_max_bytes) {
+      return HttpResponse.json(
+        {
+          error: { code: 'too_large', message: 'Ukuran video melebihi batas 100 MB', details: {} },
+        },
+        { status: 413 },
+      )
+    }
+
+    if (rawBytes.byteLength === 0 || detectMagicMimeFromBytes(rawBytes) !== 'video/mp4') {
+      return HttpResponse.json(
+        {
+          error: {
+            code: 'unsupported_type',
+            message: 'Video demo harus berupa file MP4.',
+            details: {},
+          },
+        },
+        { status: 415 },
+      )
+    }
+
+    const encodedFilename = request.headers.get('X-Filename') ?? 'demo.mp4'
+    let originalFilename = encodedFilename
+    try {
+      originalFilename = decodeURIComponent(encodedFilename)
+    } catch {
+      originalFilename = encodedFilename
+    }
+
+    // Re-uploading replaces the previous version.
+    const previous = team.submission.video
+    if (previous) {
+      mockState.items.delete(previous.item_id)
+    }
+
+    const newItem: ItemMeta = {
+      item_id: `44444444-5555-4666-8777-${String(++mockState.nextIdCounter).padStart(12, '0')}`,
+      field: 'video',
+      content_type: 'video/mp4',
+      size_bytes: rawBytes.byteLength,
+      original_filename: originalFilename,
+      uploaded_at: new Date().toISOString(),
+    }
+
+    mockState.items.set(newItem.item_id, {
+      meta: newItem,
+      bytes: rawBytes,
+      ownerEmail: record.user.email,
+      tampered: false,
+    })
+
+    syncTeamDerivedState({
+      ...team,
+      submission: { ...team.submission, video: newItem },
+    })
+
+    return HttpResponse.json(newItem, { status: 201 })
+  }),
+
   http.put('*/api/teams/me/repo', async ({ request }) => {
     const gate = requireSubmissionLeader(request)
     if (!gate.ok) {

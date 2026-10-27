@@ -90,8 +90,17 @@ export interface DocumentValidationResult {
   errorMessage: string | null
 }
 
+export interface VideoValidationResult {
+  valid: boolean
+  detectedMime: 'video/mp4' | null
+  errorMessage: string | null
+}
+
 /** Proposal PDF ceiling from the API contract: 10 MB. */
 export const PROPOSAL_MAX_BYTES = 10_485_760
+
+/** Demo video MP4 ceiling from the API contract: 100 MB. */
+export const VIDEO_MAX_BYTES = 104_857_600
 
 export function formatBytes(bytes: number): string {
   if (!Number.isFinite(bytes) || bytes < 0) {
@@ -156,6 +165,60 @@ export async function validateProposalFile(
   return {
     valid: true,
     detectedMime: 'application/pdf',
+    errorMessage: null,
+  }
+}
+
+/**
+ * Client-side validation for the team demo video (`POST /api/teams/me/video`):
+ * MP4 only, non-empty, and at most `VIDEO_MAX_BYTES`. The size gate runs before
+ * any byte is read so a 100 MB+ file is rejected without being buffered.
+ */
+export async function validateVideoFile(
+  file: File,
+  maxBytes = VIDEO_MAX_BYTES,
+): Promise<VideoValidationResult> {
+  if (file.size <= 0) {
+    return {
+      valid: false,
+      detectedMime: null,
+      errorMessage: 'File video tidak boleh kosong (0 byte).',
+    }
+  }
+
+  if (file.size > maxBytes) {
+    return {
+      valid: false,
+      detectedMime: null,
+      errorMessage: `Ukuran video (${formatBytes(file.size)}) melebihi batas maksimal ${formatBytes(maxBytes)}.`,
+    }
+  }
+
+  const declaredMime = file.type.trim().toLowerCase()
+  if (
+    declaredMime !== '' &&
+    declaredMime !== 'application/octet-stream' &&
+    declaredMime !== 'video/mp4'
+  ) {
+    return {
+      valid: false,
+      detectedMime: null,
+      errorMessage: 'Video demo harus berupa file MP4.',
+    }
+  }
+
+  const headerBytes = await readLeadingBytes(file, 16)
+  if (detectMagicMimeFromBytes(headerBytes) !== 'video/mp4') {
+    return {
+      valid: false,
+      detectedMime: null,
+      errorMessage: 'Signature biner (magic bytes) file bukan MP4 yang sah.',
+    }
+  }
+
+  return {
+    valid: true,
+    detectedMime: 'video/mp4',
     errorMessage: null,
   }
 }

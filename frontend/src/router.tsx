@@ -25,6 +25,7 @@ import { DocumentManagerPage } from './pages/participant/DocumentManagerPage'
 import { ParticipantDashboardPage } from './pages/participant/ParticipantDashboardPage'
 import { ProfilePage } from './pages/participant/ProfilePage'
 import { TeamWorkspacePage } from './pages/participant/TeamWorkspacePage'
+import { VideoUploadPage } from './pages/participant/VideoUploadPage'
 import { useAuthStore } from './stores/authStore'
 import { useUiStore } from './stores/uiStore'
 
@@ -317,15 +318,7 @@ export function AppRoutes() {
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/documents" element={<DocumentManagerPage />} />
               <Route path="/team" element={<TeamWorkspacePage />} />
-              <Route
-                path="/video"
-                element={
-                  <RoutePlaceholder
-                    title="Demo Video Upload & Preview"
-                    description="Streaming raw binary MP4 upload, full-blob preview, and download (Phase 3)."
-                  />
-                }
-              />
+              <Route path="/video" element={<VideoUploadPage />} />
             </Route>
           </Route>
 
