@@ -28,18 +28,11 @@ describe('Application Shell & Core Routing', () => {
     expect(screen.getByText('100 MB')).toBeInTheDocument()
   })
 
-  it('navigates across superadmin routes and renders Anggota D benchmark route boundary', async () => {
+  it('navigates across superadmin routes', async () => {
     const user = userEvent.setup()
-    useAuthStore.getState().setSessionUser({
-      id: 'a0000000-0000-4000-8000-000000000001',
-      email: 'admin@panitia.id',
-      role: 'superadmin',
-      full_name: null,
-      verification_status: null,
-      consent: null,
-      current_policy_version: '1.0',
-      team: null,
-    })
+    // The superadmin endpoints are session-gated, so the mock server needs a
+    // real session: a store-only user answers 401 and gets logged straight out.
+    useAuthStore.getState().setSessionUser(seedMockActiveSession('admin@panitia.id')!)
 
     renderWithProviders(<AppRoutes />, {
       routerProps: { initialEntries: ['/admin/benchmarks'] },

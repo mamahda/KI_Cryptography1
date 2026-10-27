@@ -2,10 +2,17 @@ import { http, HttpResponse } from 'msw'
 import { CSRF_COOKIE_NAME, CSRF_HEADER_NAME } from '../api/csrf'
 import {
   DOCUMENT_TYPES,
+  type AdminJuriAccount,
+  type AdminParticipantListItem,
+  type AdminTeamListItem,
+  type AuditAction,
+  type AuditLogItem,
+  type BenchmarkRow,
   type ConsentInfo,
   type DocumentType,
   type FinalizeMissingItem,
   type ItemMeta,
+  type JuriTeamSummary,
   type Me,
   type ParticipantDocumentsResponse,
   type ParticipantProfile,
@@ -13,6 +20,8 @@ import {
   type Team,
   type TeamStatus,
   type UpdateProfileRequest,
+  type UserRole,
+  type VerificationStatus,
 } from '../api/types'
 import {
   DOCUMENT_ALLOWED_MIMES,
@@ -555,9 +564,61 @@ interface MockServerState {
   activeEmail: string | null
   csrfToken: string | null
   nextIdCounter: number
+  /** Audit trail, newest first, as `GET /api/admin/audit-logs` returns it. */
+  auditLogs: AuditLogItem[]
+  /** Juri accounts live in `accounts`; only their creation time is extra. */
+  juriCreatedAt: Map<string, string>
+  nextAuditId: number
 }
 
 const initialSeed = createInitialStateData(DEFAULT_POLICY_VERSION)
+
+const DEFAULT_JURI_CREATED_AT = '2026-10-20T09:00:00+07:00'
+
+function createInitialAuditLogs(): AuditLogItem[] {
+  return [
+    {
+      id: 503,
+      actor_id: 'e4d3c2b1-a098-4765-8432-10fedcba9876',
+      actor_email: 'juri1@panitia.id',
+      actor_role: 'juri',
+      action: 'view_item',
+      item_id: '6c2d8e4f-0a1b-4c3d-9e5f-7a8b9c0d1e2f',
+      subject_user_id: null,
+      created_at: '2026-10-26T09:30:00+07:00',
+    },
+    {
+      id: 502,
+      actor_id: 'a0000000-0000-4000-8000-000000000001',
+      actor_email: 'admin@panitia.id',
+      actor_role: 'superadmin',
+      action: 'verify_participant',
+      item_id: null,
+      subject_user_id: 'c3d4e5f6-2222-4333-8444-555566667777',
+      created_at: '2026-10-25T14:05:00+07:00',
+    },
+    {
+      id: 501,
+      actor_id: 'a0000000-0000-4000-8000-000000000001',
+      actor_email: 'admin@panitia.id',
+      actor_role: 'superadmin',
+      action: 'update_settings',
+      item_id: null,
+      subject_user_id: null,
+      created_at: '2026-10-24T08:00:00+07:00',
+    },
+    {
+      id: 500,
+      actor_id: null,
+      actor_email: null,
+      actor_role: null,
+      action: 'integrity_failure',
+      item_id: '3f6c1e2a-8b4d-4c1f-9e7a-2b5d8c0f1a93',
+      subject_user_id: null,
+      created_at: '2026-10-23T22:41:00+07:00',
+    },
+  ]
+}
 
 const mockState: MockServerState = {
   settings: structuredClone(DEFAULT_MOCK_SETTINGS),
@@ -569,6 +630,9 @@ const mockState: MockServerState = {
   activeEmail: null,
   csrfToken: null,
   nextIdCounter: 100,
+  auditLogs: createInitialAuditLogs(),
+  juriCreatedAt: new Map([['juri1@panitia.id', DEFAULT_JURI_CREATED_AT]]),
+  nextAuditId: 600,
 }
 
 function setBrowserCsrfCookie(token: string | null): void {
@@ -640,6 +704,9 @@ export function resetMockState(): void {
   mockState.activeEmail = null
   mockState.csrfToken = null
   mockState.nextIdCounter = 100
+  mockState.auditLogs = createInitialAuditLogs()
+  mockState.juriCreatedAt = new Map([['juri1@panitia.id', DEFAULT_JURI_CREATED_AT]])
+  mockState.nextAuditId = 600
   setBrowserCsrfCookie(null)
 }
 
@@ -766,6 +833,81 @@ function requirePesertaWithConsent(
   }
 
   return { ok: true, record }
+}
+
+/** Gate for the juri and superadmin endpoint families. */
+function requireRole(
+  role: UserRole,
+): { ok: true; record: MockAccountRecord } | { ok: false; response: Response } {
+  const record = getAuthenticatedRecord()
+  if (!record) {
+    return {
+      ok: false,
+      response: HttpResponse.json(
+        {
+          error: {
+            code: 'unauthenticated',
+            message: 'Sesi belum aktif atau sudah kedaluwarsa',
+            details: {},
+          },
+        },
+        { status: 401 },
+      ),
+    }
+  }
+  if (record.user.role !== role) {
+    return {
+      ok: false,
+      response: HttpResponse.json(
+        {
+          error: {
+            code: 'forbidden',
+            message: `Endpoint khusus ${role}`,
+            details: {},
+          },
+        },
+        { status: 403 },
+      ),
+    }
+  }
+  return { ok: true, record }
+}
+
+function recordAuditLog(
+  actor: MockAccountRecord | null,
+  action: AuditAction,
+  extra: { item_id?: string | null; subject_user_id?: string | null } = {},
+): void {
+  mockState.auditLogs.unshift({
+    id: ++mockState.nextAuditId,
+    actor_id: actor?.user.id ?? null,
+    actor_email: actor?.user.email ?? null,
+    actor_role: actor?.user.role ?? null,
+    action,
+    item_id: extra.item_id ?? null,
+    subject_user_id: extra.subject_user_id ?? null,
+    created_at: new Date().toISOString(),
+  })
+}
+
+/** `page` starts at 1; `page_size` defaults to 25 and is capped at 100. */
+function paginate<T>(rows: T[], url: URL): { items: T[]; page: number; page_size: number; total: number } {
+  const rawPage = Number.parseInt(url.searchParams.get('page') ?? '1', 10)
+  const rawSize = Number.parseInt(url.searchParams.get('page_size') ?? '25', 10)
+  const page = Number.isFinite(rawPage) && rawPage > 0 ? rawPage : 1
+  const pageSize = Math.min(Number.isFinite(rawSize) && rawSize > 0 ? rawSize : 25, 100)
+  const start = (page - 1) * pageSize
+  return {
+    items: rows.slice(start, start + pageSize),
+    page,
+    page_size: pageSize,
+    total: rows.length,
+  }
+}
+
+function teamMemberNames(team: Team): { leaderName: string | null; memberCount: number } {
+  const leader = team.members.find((member) => member.is_leader)
+  return { leaderName: leader?.full_name ?? null, memberCount: team.members.length }
 }
 
 function verifyCsrf(request: Request): Response | null {
@@ -1435,10 +1577,23 @@ export const handlers = [
     const itemId = String(params.itemId)
     const stored = mockState.items.get(itemId)
 
+    // Access table from the contract: a peserta opens its own items, a juri opens
+    // proposal/video of teams that already submitted final, a superadmin opens all.
+    const belongsToFinalizedTeam =
+      stored !== undefined &&
+      (stored.meta.field === 'proposal' || stored.meta.field === 'video') &&
+      Array.from(mockState.teams.values()).some(
+        (team) =>
+          team.status === 'final' &&
+          (team.submission.proposal?.item_id === stored.meta.item_id ||
+            team.submission.video?.item_id === stored.meta.item_id),
+      )
+
     const canAccess =
       stored &&
       (record.user.role === 'superadmin' ||
-        (record.user.role === 'peserta' && stored.ownerEmail === record.user.email))
+        (record.user.role === 'peserta' && stored.ownerEmail === record.user.email) ||
+        (record.user.role === 'juri' && belongsToFinalizedTeam))
 
     if (!stored || !canAccess) {
       return HttpResponse.json(
@@ -2124,7 +2279,464 @@ export const handlers = [
     return HttpResponse.json({ team: finalized }, { status: 200 })
   }),
 
-  http.get('*/api/admin/benchmarks', () => {
+  /* ------------------------------------------------------------------ */
+  /* Juri                                                                */
+  /* ------------------------------------------------------------------ */
+
+  http.get('*/api/juri/teams', () => {
+    const gate = requireRole('juri')
+    if (!gate.ok) {
+      return gate.response
+    }
+
+    const teams: JuriTeamSummary[] = Array.from(mockState.teams.values())
+      .filter((team) => team.status === 'final' && team.finalized_at)
+      .sort((a, b) => String(b.finalized_at).localeCompare(String(a.finalized_at)))
+      .map((team) => ({
+        id: team.id,
+        name: team.name,
+        finalized_at: String(team.finalized_at),
+        member_count: team.members.length,
+      }))
+
+    return HttpResponse.json({ teams }, { status: 200 })
+  }),
+
+  http.get('*/api/juri/teams/:teamId', ({ params }) => {
+    const gate = requireRole('juri')
+    if (!gate.ok) {
+      return gate.response
+    }
+
+    const team = mockState.teams.get(String(params.teamId))
+    if (!team || team.status !== 'final' || !team.finalized_at) {
+      return HttpResponse.json(
+        {
+          error: {
+            code: 'not_found',
+            message: 'Tim tidak ditemukan atau belum submit final.',
+            details: {},
+          },
+        },
+        { status: 404 },
+      )
+    }
+
+    // Opening the detail is logged: it carries member names.
+    recordAuditLog(gate.record, 'view_profile', { subject_user_id: team.leader_id })
+
+    return HttpResponse.json(
+      {
+        team: {
+          id: team.id,
+          name: team.name,
+          finalized_at: team.finalized_at,
+          members: team.members.map((member) => ({
+            full_name: member.full_name,
+            institution:
+              mockState.accounts.get(
+                Array.from(mockState.accounts.values()).find(
+                  (account) => account.user.id === member.user_id,
+                )?.user.email ?? '',
+              )?.profile.institution ?? null,
+            is_leader: member.is_leader,
+          })),
+          proposal: team.submission.proposal,
+          video: team.submission.video,
+          repo_url: team.submission.repo_url,
+        },
+      },
+      { status: 200 },
+    )
+  }),
+
+  /* ------------------------------------------------------------------ */
+  /* Superadmin                                                          */
+  /* ------------------------------------------------------------------ */
+
+  http.get('*/api/admin/participants', ({ request }) => {
+    const gate = requireRole('superadmin')
+    if (!gate.ok) {
+      return gate.response
+    }
+
+    const url = new URL(request.url)
+    const statusFilter = url.searchParams.get('status')
+
+    const rows: AdminParticipantListItem[] = Array.from(mockState.accounts.values())
+      .filter((account) => account.user.role === 'peserta')
+      .filter(
+        (account) =>
+          !statusFilter || account.profile.verification_status === statusFilter,
+      )
+      .map((account) => {
+        const team = account.teamId ? mockState.teams.get(account.teamId) : null
+        return {
+          user_id: account.user.id,
+          email: account.user.email,
+          full_name: account.profile.full_name,
+          institution: account.profile.institution,
+          age: account.profile.age,
+          is_minor: account.profile.is_minor,
+          verification_status: account.profile.verification_status,
+          documents_complete: account.documents.documents_complete,
+          team_name: team?.name ?? null,
+        }
+      })
+
+    return HttpResponse.json(paginate(rows, url), { status: 200 })
+  }),
+
+  http.get('*/api/admin/participants/:userId', ({ params }) => {
+    const gate = requireRole('superadmin')
+    if (!gate.ok) {
+      return gate.response
+    }
+
+    const account = Array.from(mockState.accounts.values()).find(
+      (candidate) =>
+        candidate.user.id === String(params.userId) && candidate.user.role === 'peserta',
+    )
+    if (!account) {
+      return HttpResponse.json(
+        {
+          error: { code: 'not_found', message: 'Peserta tidak ditemukan.', details: {} },
+        },
+        { status: 404 },
+      )
+    }
+
+    recordAuditLog(gate.record, 'view_profile', { subject_user_id: account.user.id })
+
+    const team = account.teamId ? mockState.teams.get(account.teamId) : null
+
+    return HttpResponse.json(
+      {
+        user_id: account.user.id,
+        email: account.user.email,
+        profile: account.profile,
+        documents: account.documents,
+        verification_status: account.profile.verification_status,
+        verification_note: account.profile.verification_note,
+        team: team ? { id: team.id, name: team.name, status: team.status } : null,
+      },
+      { status: 200 },
+    )
+  }),
+
+  http.patch('*/api/admin/participants/:userId', async ({ request, params }) => {
+    const gate = requireRole('superadmin')
+    if (!gate.ok) {
+      return gate.response
+    }
+    const csrfError = verifyCsrf(request)
+    if (csrfError) {
+      return csrfError
+    }
+
+    const account = Array.from(mockState.accounts.values()).find(
+      (candidate) =>
+        candidate.user.id === String(params.userId) && candidate.user.role === 'peserta',
+    )
+    if (!account) {
+      return HttpResponse.json(
+        {
+          error: { code: 'not_found', message: 'Peserta tidak ditemukan.', details: {} },
+        },
+        { status: 404 },
+      )
+    }
+
+    const body = (await request.json().catch(() => null)) as
+      | { verification_status?: unknown; note?: unknown }
+      | null
+    const decision = body?.verification_status
+    const note = typeof body?.note === 'string' ? body.note.trim() : ''
+
+    if (decision !== 'terverifikasi' && decision !== 'ditolak') {
+      return HttpResponse.json(
+        {
+          error: {
+            code: 'validation_error',
+            message: 'Data tidak valid',
+            details: {
+              fields: {
+                verification_status: 'Nilai harus terverifikasi atau ditolak.',
+              },
+            },
+          },
+        },
+        { status: 400 },
+      )
+    }
+
+    if (decision === 'ditolak' && note.length === 0) {
+      return HttpResponse.json(
+        {
+          error: {
+            code: 'validation_error',
+            message: 'Data tidak valid',
+            details: { fields: { note: 'Catatan wajib diisi saat menolak peserta.' } },
+          },
+        },
+        { status: 400 },
+      )
+    }
+
+    const nextStatus = decision as VerificationStatus
+    const nextNote = decision === 'ditolak' ? note : note.length > 0 ? note : null
+
+    account.profile = {
+      ...account.profile,
+      verification_status: nextStatus,
+      verification_note: nextNote,
+    }
+    account.user = {
+      ...account.user,
+      verification_status: nextStatus,
+      verification_note: nextNote,
+    }
+
+    recordAuditLog(gate.record, 'verify_participant', {
+      subject_user_id: account.user.id,
+    })
+
+    return HttpResponse.json(
+      {
+        user_id: account.user.id,
+        verification_status: nextStatus,
+        verification_note: nextNote,
+      },
+      { status: 200 },
+    )
+  }),
+
+  http.get('*/api/admin/teams', ({ request }) => {
+    const gate = requireRole('superadmin')
+    if (!gate.ok) {
+      return gate.response
+    }
+
+    const rows: AdminTeamListItem[] = Array.from(mockState.teams.values()).map((team) => {
+      const { leaderName, memberCount } = teamMemberNames(team)
+      return {
+        id: team.id,
+        name: team.name,
+        status: team.status,
+        member_count: memberCount,
+        leader_name: leaderName,
+        finalized_at: team.finalized_at,
+      }
+    })
+
+    return HttpResponse.json(paginate(rows, new URL(request.url)), { status: 200 })
+  }),
+
+  http.get('*/api/admin/juri', () => {
+    const gate = requireRole('superadmin')
+    if (!gate.ok) {
+      return gate.response
+    }
+
+    const juri: AdminJuriAccount[] = Array.from(mockState.accounts.values())
+      .filter((account) => account.user.role === 'juri')
+      .map((account) => ({
+        user_id: account.user.id,
+        email: account.user.email,
+        created_at:
+          mockState.juriCreatedAt.get(account.user.email) ?? DEFAULT_JURI_CREATED_AT,
+      }))
+
+    return HttpResponse.json({ juri }, { status: 200 })
+  }),
+
+  http.post('*/api/admin/juri', async ({ request }) => {
+    const gate = requireRole('superadmin')
+    if (!gate.ok) {
+      return gate.response
+    }
+    const csrfError = verifyCsrf(request)
+    if (csrfError) {
+      return csrfError
+    }
+
+    const body = (await request.json().catch(() => null)) as
+      | { email?: unknown; password?: unknown }
+      | null
+    const email = typeof body?.email === 'string' ? body.email.trim().toLowerCase() : ''
+    const password = typeof body?.password === 'string' ? body.password : ''
+
+    const fields: Record<string, string> = {}
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      fields.email = 'Format email tidak valid.'
+    }
+    if (password.length < 8) {
+      fields.password = 'Kata sandi minimal 8 karakter.'
+    }
+    if (Object.keys(fields).length > 0) {
+      return HttpResponse.json(
+        {
+          error: { code: 'validation_error', message: 'Data tidak valid', details: { fields } },
+        },
+        { status: 400 },
+      )
+    }
+
+    if (mockState.accounts.has(email)) {
+      return HttpResponse.json(
+        {
+          error: {
+            code: 'email_taken',
+            message: 'Email sudah terdaftar.',
+            details: {},
+          },
+        },
+        { status: 409 },
+      )
+    }
+
+    const userId = `e4d3c2b1-a098-4765-8432-${String(++mockState.nextIdCounter).padStart(12, '0')}`
+    mockState.accounts.set(email, {
+      password,
+      user: {
+        id: userId,
+        email,
+        role: 'juri',
+        full_name: null,
+        verification_status: null,
+        verification_note: null,
+        consent: null,
+        current_policy_version: mockState.policyVersion,
+        team: null,
+      },
+      profile: createEmptyProfile(),
+      documents: { ktp: null, ktm: null, twibbon: null, documents_complete: false },
+      teamId: null,
+    })
+    mockState.juriCreatedAt.set(email, new Date().toISOString())
+
+    recordAuditLog(gate.record, 'create_juri', { subject_user_id: userId })
+
+    return HttpResponse.json({ user_id: userId, email, role: 'juri' }, { status: 201 })
+  }),
+
+  http.put('*/api/admin/settings', async ({ request }) => {
+    const gate = requireRole('superadmin')
+    if (!gate.ok) {
+      return gate.response
+    }
+    const csrfError = verifyCsrf(request)
+    if (csrfError) {
+      return csrfError
+    }
+
+    const body = (await request.json().catch(() => null)) as Record<string, unknown> | null
+    const registrationDeadline =
+      typeof body?.registration_deadline === 'string' ? body.registration_deadline : ''
+    const submissionDeadline =
+      typeof body?.submission_deadline === 'string' ? body.submission_deadline : ''
+    const minTeamSize = Number(body?.min_team_size)
+    const maxTeamSize = Number(body?.max_team_size)
+
+    const fields: Record<string, string> = {}
+    if (Number.isNaN(Date.parse(registrationDeadline))) {
+      fields.registration_deadline = 'Tanggal tenggat tidak valid.'
+    }
+    if (Number.isNaN(Date.parse(submissionDeadline))) {
+      fields.submission_deadline = 'Tanggal tenggat tidak valid.'
+    }
+    if (!Number.isInteger(minTeamSize) || minTeamSize < 1) {
+      fields.min_team_size = 'Jumlah anggota minimum harus bilangan bulat positif.'
+    }
+    if (!Number.isInteger(maxTeamSize) || maxTeamSize < 1) {
+      fields.max_team_size = 'Jumlah anggota maksimum harus bilangan bulat positif.'
+    }
+    if (!fields.min_team_size && !fields.max_team_size && minTeamSize > maxTeamSize) {
+      fields.min_team_size = 'Jumlah anggota minimum tidak boleh melebihi maksimum.'
+    }
+    if (Object.keys(fields).length > 0) {
+      return HttpResponse.json(
+        {
+          error: { code: 'validation_error', message: 'Data tidak valid', details: { fields } },
+        },
+        { status: 400 },
+      )
+    }
+
+    mockState.settings = {
+      ...mockState.settings,
+      registration_deadline: registrationDeadline,
+      submission_deadline: submissionDeadline,
+      min_team_size: minTeamSize,
+      max_team_size: maxTeamSize,
+    }
+
+    recordAuditLog(gate.record, 'update_settings')
+
+    return HttpResponse.json(mockState.settings, { status: 200 })
+  }),
+
+  http.get('*/api/admin/audit-logs', ({ request }) => {
+    const gate = requireRole('superadmin')
+    if (!gate.ok) {
+      return gate.response
+    }
+
+    const url = new URL(request.url)
+    const actorId = url.searchParams.get('actor_id')
+    const action = url.searchParams.get('action')
+    const from = url.searchParams.get('from')
+    const to = url.searchParams.get('to')
+
+    const rows = mockState.auditLogs.filter((entry) => {
+      if (actorId && entry.actor_id !== actorId) {
+        return false
+      }
+      if (action && entry.action !== action) {
+        return false
+      }
+      if (from && Date.parse(entry.created_at) < Date.parse(from)) {
+        return false
+      }
+      if (to && Date.parse(entry.created_at) > Date.parse(to)) {
+        return false
+      }
+      return true
+    })
+
+    return HttpResponse.json(paginate(rows, url), { status: 200 })
+  }),
+
+  http.get('*/api/admin/benchmarks', ({ request }) => {
+    const gate = requireRole('superadmin')
+    if (!gate.ok) {
+      return gate.response
+    }
+
+    const url = new URL(request.url)
+    const operation = url.searchParams.get('operation')
+    const source = url.searchParams.get('source')
+
+    // Shape-only sample data, as the contract says of its own example:
+    // "Angka di contoh hanya menunjukkan format, bukan hasil."
+    const base: Array<BenchmarkRow & { source: string }> = [
+      { cipher: 'aes', operation: 'enc', size_bytes: 5_242_880, n: 30, median_ns: 6_050_000, q1_ns: 5_900_000, q3_ns: 6_400_000, median_mb_s: 826.4, source: 'controlled' },
+      { cipher: 'des', operation: 'enc', size_bytes: 5_242_880, n: 30, median_ns: 92_400_000, q1_ns: 90_100_000, q3_ns: 96_800_000, median_mb_s: 54.1, source: 'controlled' },
+      { cipher: 'rc4', operation: 'enc', size_bytes: 5_242_880, n: 30, median_ns: 18_700_000, q1_ns: 18_200_000, q3_ns: 19_500_000, median_mb_s: 267.4, source: 'controlled' },
+      { cipher: 'aes', operation: 'dec', size_bytes: 5_242_880, n: 30, median_ns: 6_120_000, q1_ns: 5_980_000, q3_ns: 6_510_000, median_mb_s: 816.9, source: 'controlled' },
+      { cipher: 'des', operation: 'dec', size_bytes: 5_242_880, n: 30, median_ns: 93_100_000, q1_ns: 91_000_000, q3_ns: 97_400_000, median_mb_s: 53.7, source: 'controlled' },
+      { cipher: 'rc4', operation: 'dec', size_bytes: 5_242_880, n: 30, median_ns: 18_900_000, q1_ns: 18_400_000, q3_ns: 19_800_000, median_mb_s: 264.6, source: 'controlled' },
+      { cipher: 'aes', operation: 'hmac', size_bytes: 5_242_880, n: 30, median_ns: 11_400_000, q1_ns: 11_100_000, q3_ns: 12_000_000, median_mb_s: 438.6, source: 'controlled' },
+      { cipher: 'aes', operation: 'enc', size_bytes: 104_857_600, n: 30, median_ns: 124_000_000, q1_ns: 121_000_000, q3_ns: 131_000_000, median_mb_s: 806.5, source: 'live' },
+      { cipher: 'des', operation: 'enc', size_bytes: 104_857_600, n: 30, median_ns: 1_880_000_000, q1_ns: 1_840_000_000, q3_ns: 1_960_000_000, median_mb_s: 53.2, source: 'live' },
+      { cipher: 'rc4', operation: 'enc', size_bytes: 104_857_600, n: 30, median_ns: 381_000_000, q1_ns: 372_000_000, q3_ns: 398_000_000, median_mb_s: 262.5, source: 'live' },
+    ]
+
+    const rows: BenchmarkRow[] = base
+      .filter((row) => !operation || row.operation === operation)
+      .filter((row) => !source || row.source === source)
+      .map(({ source: _source, ...row }) => row)
+
     return HttpResponse.json(
       {
         env: {
@@ -2133,7 +2745,7 @@ export const handlers = [
           python: '3.12.4',
           pycryptodome: '3.21.0',
         },
-        rows: [],
+        rows,
       },
       { status: 200 },
     )

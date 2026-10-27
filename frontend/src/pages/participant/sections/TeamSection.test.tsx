@@ -2,12 +2,12 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { beforeEach, describe, expect, it } from 'vitest'
-import type { Team } from '../../api'
-import { seedMockActiveSession, setMockTeamStatus } from '../../mocks/handlers'
-import { server } from '../../mocks/server'
-import { AppRoutes } from '../../router'
-import { useAuthStore } from '../../stores/authStore'
-import { renderWithProviders } from '../../test/test-utils'
+import type { Team } from '@/api'
+import { seedMockActiveSession, setMockTeamStatus } from '@/mocks/handlers'
+import { server } from '@/mocks/server'
+import { AppRoutes } from '@/router'
+import { useAuthStore } from '@/stores/authStore'
+import { renderWithProviders } from '@/test/test-utils'
 
 const GARUDA_TEAM_ID = '9c8b7a6d-5e4f-4321-8765-0fedcba98765'
 const BUDI_ID = 'b1a7c2d4-5e6f-4a8b-9c0d-1e2f3a4b5c6d'
@@ -79,7 +79,7 @@ function signInAs(email: string) {
 }
 
 function renderWorkspace() {
-  return renderWithProviders(<AppRoutes />, { routerProps: { initialEntries: ['/team'] } })
+  return renderWithProviders(<AppRoutes />, { routerProps: { initialEntries: ['/dashboard'] } })
 }
 
 describe('Team & Submission Workspace', () => {
@@ -393,7 +393,7 @@ describe('Team & Submission Workspace', () => {
     await user.click(within(modal).getByRole('button', { name: /Ya, Submit Final/i }))
 
     expect(await screen.findByTestId('team-locked-notice')).toBeInTheDocument()
-    expect(screen.getByTestId('team-status-badge')).toHaveTextContent(/Final/i)
+    expect(screen.getByTestId('team-section-status-badge')).toHaveTextContent(/Final/i)
     expect(screen.queryByRole('button', { name: /Submit Final/i })).not.toBeInTheDocument()
     expect(screen.queryByTestId('file-input-proposal')).not.toBeInTheDocument()
   })
@@ -423,7 +423,7 @@ describe('Team & Submission Workspace', () => {
       expect(screen.queryByTestId('finalize-confirm-modal')).not.toBeInTheDocument()
     })
     expect(finalizeCalls).toBe(0)
-    expect(screen.getByTestId('team-status-badge')).toHaveTextContent('Draft')
+    expect(screen.getByTestId('team-section-status-badge')).toHaveTextContent('Draft')
   })
 
   it('surfaces finalize_requirements returned by the server', async () => {
@@ -454,7 +454,7 @@ describe('Team & Submission Workspace', () => {
     await user.click(within(modal).getByRole('button', { name: /Ya, Submit Final/i }))
 
     expect(await screen.findByTestId('team-error-alert')).toHaveTextContent(/belum lengkap/i)
-    expect(screen.getByTestId('team-status-badge')).toHaveTextContent('Draft')
+    expect(screen.getByTestId('team-section-status-badge')).toHaveTextContent('Draft')
   })
 
   it('locks membership actions once the team is final', async () => {
