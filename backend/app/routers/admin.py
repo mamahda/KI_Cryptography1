@@ -1,10 +1,7 @@
 """Endpoint superadmin sesuai kontrak PRD dan frontend."""
 
-import json
 import sqlite3
-from collections import defaultdict
 from datetime import datetime
-from statistics import median, quantiles
 from typing import Literal
 from uuid import uuid4
 
@@ -18,6 +15,7 @@ from app.db.settings_store import get_setting, set_setting
 from app.db.users import create_user, email_taken, get_email
 from app.db.views import documents_data, profile_data, public_settings, team_data
 from app.dependencies import get_db
+from app.benchmarking import benchmark_summary
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -368,7 +366,9 @@ def list_audit_logs(
     for row in rows:
         entry = dict(row)
         # Email aktor terenkripsi di items, jadi didekripsi per baris (bukan lewat JOIN).
-        entry["actor_email"] = get_email(db, row["actor_id"]) if row["actor_id"] else None
+        entry["actor_email"] = (
+            get_email(db, row["actor_id"]) if row["actor_id"] else None
+        )
         items.append(entry)
     return {
         "items": items,
@@ -382,42 +382,13 @@ def list_audit_logs(
 def benchmarks(
     current_user: CurrentUser = Depends(require_roles("superadmin")),
     db: sqlite3.Connection = Depends(get_db),
-    source: Literal["live", "controlled"] | None = None,
+    source: Literal["live", "controlled"] = "controlled",
     operation: Literal["enc", "dec", "hmac", "wrap"] | None = None,
+    run_id: str | None = None,
 ) -> dict:
-    conditions, args = [], []
-    for column, value in [("source", source), ("operation", operation)]:
-        if value:
-            conditions.append(f"{column} = ?")
-            args.append(value)
-    records = db.execute(
-        "SELECT * FROM benchmark_runs"
-        + (" WHERE " + " AND ".join(conditions) if conditions else ""),
-        args,
-    ).fetchall()
-    groups = defaultdict(list)
-    for row in records:
-        groups[(row["cipher"], row["operation"], row["size_bytes"])].append(
-            row["duration_ns"]
-        )
-    rows = []
-    for (cipher, operation_name, size), durations in groups.items():
-        middle = median(durations)
-        q1, _, q3 = (
-            quantiles(durations, n=4, method="inclusive")
-            if len(durations) > 1
-            else [middle] * 3
-        )
-        rows.append(
-            {
-                "cipher": cipher,
-                "operation": operation_name,
-                "size_bytes": size,
-                "n": len(durations),
-                "median_ns": middle,
-                "q1_ns": q1,
-                "q3_ns": q3,
-                "median_mb_s": size / (1024**2) / (middle / 1e9) if middle else 0,
-            }
-        )
-    return {"env": json.loads(records[0]["env"]) if records else None, "rows": rows}
+    try:
+        return benchmark_summary(db, source=source, run_id=run_id, operation=operation)
+    except LookupError as error:
+        raise HTTPException(404, str(error)) from error
+    except ValueError as error:
+        raise HTTPException(409, str(error)) from error

@@ -13,6 +13,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 @pytest.fixture
 def client(tmp_path, monkeypatch):
     monkeypatch.setenv("JWT_SECRET_KEY", "test-only-secret-key-at-least-32-bytes")
+    monkeypatch.setenv("ROOT_KEY", "test-only-root-key-at-least-32-characters")
     monkeypatch.setenv("DATABASE_PATH", str(tmp_path / "app.db"))
     monkeypatch.setenv("STORAGE_DIR", str(tmp_path / "storage"))
     monkeypatch.setenv("SUPERADMIN_EMAIL", "admin@example.com")
@@ -280,10 +281,10 @@ def test_existing_database_migrates_without_data_loss(tmp_path):
     with closing(connect_db(database_path)) as db:
         db.executescript((MIGRATIONS / "001_initial.sql").read_text(encoding="utf-8"))
         db.execute(
-            "INSERT INTO users (id, email, password_hash, role) VALUES ('old-user', 'old@example.com', 'dummy-hash', 'peserta')"
+            "INSERT INTO users (id, email_index, password_hash, role) VALUES ('old-user', X'0102', 'dummy-hash', 'peserta')"
         )
         db.execute(
-            "INSERT INTO items (id, owner_user_id, field, storage, value) VALUES ('old-item', 'old-user', 'full_name', 'db', 'Data Lama')"
+            "INSERT INTO items (id, owner_user_id, field, storage, size_bytes) VALUES ('old-item', 'old-user', 'full_name', 'db', 9)"
         )
         db.commit()
     migrate_db(database_path)
@@ -291,8 +292,10 @@ def test_existing_database_migrates_without_data_loss(tmp_path):
     with closing(connect_db(database_path)) as db:
         assert db.execute("PRAGMA user_version").fetchone()[0] == 2
         assert (
-            db.execute("SELECT value FROM items WHERE id = 'old-item'").fetchone()[0]
-            == "Data Lama"
+            db.execute("SELECT size_bytes FROM items WHERE id = 'old-item'").fetchone()[
+                0
+            ]
+            == 9
         )
         assert (
             db.execute("SELECT disabled FROM users WHERE id = 'old-user'").fetchone()[0]
@@ -318,5 +321,8 @@ def test_benchmark_summary_and_audit_filter(client):
     summary = client.get("/api/admin/benchmarks?source=controlled&operation=enc").json()
     assert summary["rows"][0]["median_ns"] == 200
     assert summary["rows"][0]["n"] == 3
-    assert client.get("/api/admin/benchmarks?source=live").json()["rows"] == []
+    live = client.get("/api/admin/benchmarks?source=live").json()
+    assert live["rows"]
+    assert live["source"] == "live"
+    assert client.get("/api/admin/benchmarks?run_id=missing").status_code == 404
     assert client.get("/api/admin/audit-logs?action=missing").json()["items"] == []
