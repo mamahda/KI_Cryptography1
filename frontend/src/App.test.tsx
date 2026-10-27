@@ -23,7 +23,7 @@ describe('Application Shell & Core Routing', () => {
       expect(screen.getByTestId('settings-summary')).toBeInTheDocument()
     })
 
-    expect(screen.getByText('2–4 members')).toBeInTheDocument()
+    expect(screen.getByText('2–4 anggota')).toBeInTheDocument()
     expect(screen.getByText('5 MB / 10 MB')).toBeInTheDocument()
     expect(screen.getByText('100 MB')).toBeInTheDocument()
   })
