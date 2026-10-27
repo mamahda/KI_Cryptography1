@@ -622,7 +622,7 @@ function verifyCsrf(request: Request): Response | null {
 }
 
 function isRegistrationDeadlinePassed(): boolean {
-  const targetMs = Date.parse(mockState.settings.registration_deadline)
+  const targetMs = Date.parse(mockState.settings.registration_deadline ?? '')
   return !Number.isNaN(targetMs) && Date.now() > targetMs
 }
 

@@ -18,6 +18,7 @@ export const SERVER_API_ERROR_CODES = [
   'not_found',
   // 409
   'email_taken',
+  'conflict',
   'already_in_team',
   'no_team',
   'team_full',
@@ -34,6 +35,7 @@ export const SERVER_API_ERROR_CODES = [
   'rate_limited',
   // 500
   'integrity_error',
+  'internal_error',
 ] as const
 
 export type ServerApiErrorCode = (typeof SERVER_API_ERROR_CODES)[number]
