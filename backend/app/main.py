@@ -3,15 +3,27 @@
 from contextlib import asynccontextmanager, closing
 from uuid import uuid4
 
-from fastapi import FastAPI
-from slowapi import _rate_limit_exceeded_handler
+from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from slowapi.errors import RateLimitExceeded
 
 from app.core.config import get_settings
 from app.core.limiter import limiter
 from app.core.security import password_hasher
 from app.db.database import connect_db, migrate_db
-from app.routers import admin, auth, documents, items, judges, privacy, profile, teams
+from app.routers import (
+    account,
+    admin,
+    auth,
+    documents,
+    items,
+    judges,
+    privacy,
+    profile,
+    teams,
+)
 
 settings = get_settings()
 
@@ -24,7 +36,9 @@ def _seed_superadmin() -> None:
 
     with closing(connect_db(settings.database_path_abs)) as connection:
         email = settings.superadmin_email.strip().lower()
-        existing = connection.execute("SELECT id FROM users WHERE email = ?", (email,)).fetchone()
+        existing = connection.execute(
+            "SELECT id FROM users WHERE email = ?", (email,)
+        ).fetchone()
         if existing is not None:
             return
 
@@ -46,9 +60,80 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Schematics NIC API", lifespan=lifespan)
 app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-for router in (auth.router, privacy.router, profile.router, documents.router, teams.router, items.router, judges.router, admin.router):
+
+@app.exception_handler(StarletteHTTPException)
+async def api_error(request: Request, exc: StarletteHTTPException):
+    defaults = {
+        400: "validation_error",
+        401: "unauthenticated",
+        403: "forbidden",
+        404: "not_found",
+        409: "conflict",
+        413: "too_large",
+        415: "unsupported_type",
+        429: "rate_limited",
+    }
+    error = (
+        exc.detail
+        if isinstance(exc.detail, dict)
+        else {
+            "code": defaults.get(exc.status_code, "internal_error"),
+            "message": str(exc.detail),
+        }
+    )
+    return JSONResponse(
+        {"error": error}, status_code=exc.status_code, headers=exc.headers
+    )
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_error(request: Request, exc: RequestValidationError):
+    fields = {str(error["loc"][-1]): error["msg"] for error in exc.errors()}
+    return JSONResponse(
+        {
+            "error": {
+                "code": "validation_error",
+                "message": "Data tidak valid",
+                "details": {"fields": fields},
+            }
+        },
+        status_code=400,
+    )
+
+
+@app.exception_handler(RateLimitExceeded)
+async def rate_limit_error(request: Request, exc: RateLimitExceeded):
+    return JSONResponse(
+        {
+            "error": {
+                "code": "rate_limited",
+                "message": "Terlalu banyak percobaan, coba lagi nanti",
+            }
+        },
+        status_code=429,
+    )
+
+
+@app.exception_handler(Exception)
+async def internal_error(request: Request, exc: Exception):
+    return JSONResponse(
+        {"error": {"code": "internal_error", "message": "Terjadi kesalahan server"}},
+        status_code=500,
+    )
+
+
+for router in (
+    auth.router,
+    account.router,
+    privacy.router,
+    profile.router,
+    documents.router,
+    teams.router,
+    items.router,
+    judges.router,
+    admin.router,
+):
     app.include_router(router, prefix="/api")
 
 
