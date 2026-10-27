@@ -15,7 +15,13 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
+    # Kunci induk untuk modul crypto_services (wajib, minimal 32 karakter).
     root_key: str | None = None
+    root_key_version: int = 1
+    # Cipher yang dipakai menyimpan tiap item (satu baris `ciphertexts` per cipher)
+    # dan cipher yang dipakai membacanya kembali.
+    crypto_ciphers: str = "aes,des,rc4"
+    crypto_primary_cipher: str = "aes"
     jwt_secret_key: str
     jwt_cookie_secure: bool = False
 
@@ -30,6 +36,10 @@ class Settings(BaseSettings):
 
     superadmin_email: str | None = None
     superadmin_password: str | None = None
+
+    @property
+    def crypto_cipher_list(self) -> list[str]:
+        return [name.strip().lower() for name in self.crypto_ciphers.split(",") if name.strip()]
 
     @property
     def database_path_abs(self) -> Path:

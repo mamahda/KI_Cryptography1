@@ -112,7 +112,7 @@ interface CountdownCardProps {
   testId: string
   title: string
   subtitle: string
-  deadlineIso: string
+  deadlineIso: string | null
   nowMs: number
 }
 
@@ -123,8 +123,8 @@ function DeadlineCountdownCard({
   deadlineIso,
   nowMs,
 }: CountdownCardProps) {
-  const snapshot = computeCountdown(deadlineIso, nowMs)
-  const formattedDate = formatDeadlineDisplay(deadlineIso)
+  const snapshot = deadlineIso ? computeCountdown(deadlineIso, nowMs) : null
+  const formattedDate = deadlineIso ? formatDeadlineDisplay(deadlineIso) : 'Belum ditetapkan'
 
   return (
     <div
