@@ -11,7 +11,7 @@ from app.core.config import get_settings
 from app.core.limiter import limiter
 from app.core.security import password_hasher
 from app.db.database import connect_db, migrate_db
-from app.routers import auth, documents, items, judges, privacy, profile, teams
+from app.routers import admin, auth, documents, items, judges, privacy, profile, teams
 
 settings = get_settings()
 
@@ -48,7 +48,7 @@ app = FastAPI(title="Schematics NIC API", lifespan=lifespan)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-for router in (auth.router, privacy.router, profile.router, documents.router, teams.router, items.router, judges.router):
+for router in (auth.router, privacy.router, profile.router, documents.router, teams.router, items.router, judges.router, admin.router):
     app.include_router(router, prefix="/api")
 
 
