@@ -14,9 +14,9 @@ python -m pip install -r requirements.txt
 python run.py
 ```
 
-Migration berjalan otomatis saat startup. Migration aktif ada di `app/db/migrations_before_crypto/`; versi 002 menambah nama file asli, status akun nonaktif, penugasan juri, dan tabel hasil benchmark. Settings lama tetap dibaca sebagai fallback.
+Migration berjalan otomatis saat startup. Migration aktif ada di `app/db/migrations/`; skema plaintext lama disimpan sebagai arsip dan ditolak oleh migration runner. Settings lama tetap dibaca sebagai fallback.
 
-Backend masih menyimpan data plaintext. Modul kripto dan pembangkit benchmark dikerjakan terpisah; endpoint benchmark hanya merangkum data yang sudah disimpan. Integrasi kripto membutuhkan migrasi data tersendiri, bukan sekadar mengganti direktori migration.
+Backend menyimpan ciphertext melalui `crypto_services`. Jalankan `python benchmark.py --csv data/benchmark-samples.csv` dari folder backend untuk mengisi hasil controlled pada database aplikasi. Pengukuran live dicatat otomatis saat item disimpan/dibaca. Panduan CLI, satuan, filter run dan kontrak frontend ada di [BENCHMARK_FRONTEND.md](BENCHMARK_FRONTEND.md).
 
 ## Struktur
 
