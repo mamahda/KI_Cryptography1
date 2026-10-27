@@ -25,7 +25,12 @@ import {
   normalizeProfileInput,
   validateProfileForm,
 } from '../lib/profileValidation'
-import { normalizeInviteCode, validateTeamName } from '../lib/teamValidation'
+import {
+  normalizeInviteCode,
+  normalizeRepoUrl,
+  validateRepoUrl,
+  validateTeamName,
+} from '../lib/teamValidation'
 
 export const DEFAULT_MOCK_SETTINGS: PublicSettings = {
   registration_deadline: '2026-11-20T23:59:00+07:00',
@@ -783,6 +788,92 @@ function verifyCsrf(request: Request): Response | null {
 function isRegistrationDeadlinePassed(): boolean {
   const targetMs = Date.parse(mockState.settings.registration_deadline)
   return !Number.isNaN(targetMs) && Date.now() > targetMs
+}
+
+function isSubmissionDeadlinePassed(): boolean {
+  const targetMs = Date.parse(mockState.settings.submission_deadline)
+  return !Number.isNaN(targetMs) && Date.now() > targetMs
+}
+
+/**
+ * Shared gate for the three leader-only submission endpoints: an authenticated
+ * `peserta` who leads a team that is still `draft`, before the submission deadline.
+ */
+function requireSubmissionLeader(request: Request):
+  | { ok: true; record: MockAccountRecord; team: Team }
+  | { ok: false; response: Response } {
+  const rawRecord = getAuthenticatedRecord()
+  if (!rawRecord) {
+    return {
+      ok: false,
+      response: HttpResponse.json(
+        { error: { code: 'unauthenticated', message: 'Sesi belum aktif', details: {} } },
+        { status: 401 },
+      ),
+    }
+  }
+
+  const csrfError = verifyCsrf(request)
+  if (csrfError) {
+    return { ok: false, response: csrfError }
+  }
+
+  const guard = requirePesertaWithConsent(rawRecord)
+  if (!guard.ok) {
+    return { ok: false, response: guard.response }
+  }
+  const { record } = guard
+
+  const team = record.teamId ? (mockState.teams.get(record.teamId) ?? null) : null
+  if (!team || team.leader_id !== record.user.id) {
+    return {
+      ok: false,
+      response: HttpResponse.json(
+        {
+          error: {
+            code: 'not_leader',
+            message: 'Hanya Ketua Tim yang dapat mengubah submission.',
+            details: {},
+          },
+        },
+        { status: 403 },
+      ),
+    }
+  }
+
+  if (team.status === 'final') {
+    return {
+      ok: false,
+      response: HttpResponse.json(
+        {
+          error: {
+            code: 'team_locked',
+            message: 'Tim sudah difinalisasi sehingga submission tidak dapat diubah.',
+            details: {},
+          },
+        },
+        { status: 409 },
+      ),
+    }
+  }
+
+  if (isSubmissionDeadlinePassed()) {
+    return {
+      ok: false,
+      response: HttpResponse.json(
+        {
+          error: {
+            code: 'deadline_passed',
+            message: 'Tenggat pengumpulan karya telah terlewat.',
+            details: {},
+          },
+        },
+        { status: 409 },
+      ),
+    }
+  }
+
+  return { ok: true, record, team }
 }
 
 function issueSessionForEmail(email: string): { user: Me; csrfCookieHeader: string } {
@@ -1817,6 +1908,151 @@ export const handlers = [
     })
 
     return new HttpResponse(null, { status: 204 })
+  }),
+
+  http.post('*/api/teams/me/proposal', async ({ request }) => {
+    const gate = requireSubmissionLeader(request)
+    if (!gate.ok) {
+      return gate.response
+    }
+    const { record, team } = gate
+
+    const rawBytes = new Uint8Array(await request.arrayBuffer())
+
+    if (rawBytes.byteLength > mockState.settings.limits.proposal_max_bytes) {
+      return HttpResponse.json(
+        {
+          error: { code: 'too_large', message: 'Ukuran proposal melebihi batas 10 MB', details: {} },
+        },
+        { status: 413 },
+      )
+    }
+
+    if (rawBytes.byteLength === 0 || detectMagicMimeFromBytes(rawBytes) !== 'application/pdf') {
+      return HttpResponse.json(
+        {
+          error: {
+            code: 'unsupported_type',
+            message: 'Proposal harus berupa file PDF.',
+            details: {},
+          },
+        },
+        { status: 415 },
+      )
+    }
+
+    const encodedFilename = request.headers.get('X-Filename') ?? 'proposal.pdf'
+    let originalFilename = encodedFilename
+    try {
+      originalFilename = decodeURIComponent(encodedFilename)
+    } catch {
+      originalFilename = encodedFilename
+    }
+
+    // Re-uploading replaces the previous version.
+    const previous = team.submission.proposal
+    if (previous) {
+      mockState.items.delete(previous.item_id)
+    }
+
+    const newItem: ItemMeta = {
+      item_id: `33333333-4444-4555-8666-${String(++mockState.nextIdCounter).padStart(12, '0')}`,
+      field: 'proposal',
+      content_type: 'application/pdf',
+      size_bytes: rawBytes.byteLength,
+      original_filename: originalFilename,
+      uploaded_at: new Date().toISOString(),
+    }
+
+    mockState.items.set(newItem.item_id, {
+      meta: newItem,
+      bytes: rawBytes,
+      ownerEmail: record.user.email,
+      tampered: false,
+    })
+
+    syncTeamDerivedState({
+      ...team,
+      submission: { ...team.submission, proposal: newItem },
+    })
+
+    return HttpResponse.json(newItem, { status: 201 })
+  }),
+
+  http.put('*/api/teams/me/repo', async ({ request }) => {
+    const gate = requireSubmissionLeader(request)
+    if (!gate.ok) {
+      return gate.response
+    }
+    const { team } = gate
+
+    const body = (await request.json().catch(() => null)) as { repo_url?: unknown } | null
+    const rawUrl = typeof body?.repo_url === 'string' ? body.repo_url : ''
+    const urlError = validateRepoUrl(rawUrl)
+    if (urlError) {
+      return HttpResponse.json(
+        {
+          error: {
+            code: 'validation_error',
+            message: 'Data tidak valid',
+            details: { fields: { repo_url: urlError } },
+          },
+        },
+        { status: 400 },
+      )
+    }
+
+    const normalizedUrl = normalizeRepoUrl(rawUrl)
+    syncTeamDerivedState({
+      ...team,
+      submission: { ...team.submission, repo_url: normalizedUrl },
+    })
+
+    return HttpResponse.json({ repo_url: normalizedUrl }, { status: 200 })
+  }),
+
+  http.post('*/api/teams/me/finalize', async ({ request }) => {
+    const gate = requireSubmissionLeader(request)
+    if (!gate.ok) {
+      return gate.response
+    }
+    const { team } = gate
+
+    const body = (await request.json().catch(() => null)) as { confirm?: unknown } | null
+    if (body?.confirm !== true) {
+      return HttpResponse.json(
+        {
+          error: {
+            code: 'validation_error',
+            message: 'Konfirmasi submit final wajib dikirim.',
+            details: { fields: { confirm: 'Nilai confirm harus true.' } },
+          },
+        },
+        { status: 400 },
+      )
+    }
+
+    const missing = computeFinalizeMissing(team, mockState.settings.min_team_size)
+    if (missing.length > 0) {
+      return HttpResponse.json(
+        {
+          error: {
+            code: 'finalize_requirements',
+            message: 'Syarat submit final belum lengkap.',
+            details: { missing },
+          },
+        },
+        { status: 409 },
+      )
+    }
+
+    const finalized = syncTeamDerivedState({
+      ...team,
+      status: 'final',
+      finalized_at: new Date().toISOString(),
+    })
+
+    return HttpResponse.json({ team: finalized }, { status: 200 })
   }),
 
   http.get('*/api/admin/benchmarks', () => {

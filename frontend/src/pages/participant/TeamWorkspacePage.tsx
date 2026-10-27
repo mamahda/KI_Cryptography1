@@ -6,17 +6,29 @@ import {
   Crown,
   DoorOpen,
   FileCheck2,
+  FileText,
+  GitBranch,
+  ListChecks,
   Lock,
   LogIn,
   RefreshCw,
+  Send,
   UserMinus,
   UserPlus,
+  Upload,
   Users,
   X,
 } from 'lucide-react'
-import { useState, type FormEvent } from 'react'
-import { apiClient, isApiClientError, type Team, type TeamMember } from '@/api'
-import { validateInviteCode, validateTeamName } from '@/lib/teamValidation'
+import { useRef, useState, type ChangeEvent, type FormEvent } from 'react'
+import {
+  apiClient,
+  isApiClientError,
+  type FinalizeMissingItem,
+  type Team,
+  type TeamMember,
+} from '@/api'
+import { formatBytes, PROPOSAL_MAX_BYTES, validateProposalFile } from '@/lib/fileValidation'
+import { validateInviteCode, validateRepoUrl, validateTeamName } from '@/lib/teamValidation'
 import { useAuthStore } from '@/stores/authStore'
 
 const TEAM_STATUS_COPY: Record<Team['status'], { label: string; className: string }> = {
@@ -28,6 +40,14 @@ const TEAM_STATUS_COPY: Record<Team['status'], { label: string; className: strin
     label: 'Final (Terkunci)',
     className: 'border-emerald-500/30 bg-emerald-950/30 text-emerald-200',
   },
+}
+
+const FINALIZE_MISSING_LABELS: Record<FinalizeMissingItem, string> = {
+  proposal: 'Proposal PDF belum diunggah',
+  video: 'Video Demo MP4 belum diunggah',
+  repo_url: 'URL Repositori GitHub belum disimpan',
+  min_members: 'Jumlah anggota tim belum mencapai batas minimum',
+  members_incomplete: 'Masih ada anggota yang belum melengkapi profil/dokumen',
 }
 
 /** Which destructive action is awaiting its second confirmation click. */
@@ -70,6 +90,13 @@ export function TeamWorkspacePage() {
   const [actionError, setActionError] = useState<string | null>(null)
   const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm>(null)
   const [codeCopied, setCodeCopied] = useState(false)
+
+  const proposalInputRef = useRef<HTMLInputElement>(null)
+  const [proposalError, setProposalError] = useState<string | null>(null)
+  const [proposalPercent, setProposalPercent] = useState<number | null>(null)
+  const [repoUrl, setRepoUrl] = useState('')
+  const [repoError, setRepoError] = useState<string | null>(null)
+  const [finalizeOpen, setFinalizeOpen] = useState(false)
 
   const teamQuery = useQuery({
     queryKey: ['team', 'me'],
@@ -115,6 +142,51 @@ export function TeamWorkspacePage() {
     },
   })
 
+  const proposalMutation = useMutation({
+    mutationFn: (file: File) =>
+      apiClient.teams.uploadProposal(file, {
+        filename: file.name,
+        onProgress: (progress) => setProposalPercent(progress.percent),
+      }),
+    onSuccess: (uploaded) => {
+      setProposalPercent(null)
+      if (team) {
+        applyTeam({ ...team, submission: { ...team.submission, proposal: uploaded } })
+      }
+      void queryClient.invalidateQueries({ queryKey: ['team', 'me'] })
+    },
+    onError: (error) => {
+      setProposalPercent(null)
+      setProposalError(describeError(error, 'Proposal gagal diunggah.'))
+    },
+  })
+
+  const repoMutation = useMutation({
+    mutationFn: (url: string) => apiClient.teams.updateRepo({ repo_url: url }),
+    onSuccess: ({ repo_url }) => {
+      setRepoUrl('')
+      if (team) {
+        applyTeam({ ...team, submission: { ...team.submission, repo_url } })
+      }
+      void queryClient.invalidateQueries({ queryKey: ['team', 'me'] })
+    },
+    onError: (error) => {
+      setRepoError(describeError(error, 'Link repositori gagal disimpan.'))
+    },
+  })
+
+  const finalizeMutation = useMutation({
+    mutationFn: () => apiClient.teams.finalize({ confirm: true }),
+    onSuccess: ({ team: finalized }) => {
+      setFinalizeOpen(false)
+      applyTeam(finalized)
+    },
+    onError: (error) => {
+      setFinalizeOpen(false)
+      setActionError(describeError(error, 'Submit final gagal.'))
+    },
+  })
+
   const removeMemberMutation = useMutation({
     mutationFn: (userId: string) => apiClient.teams.removeMember(userId),
     onSuccess: (_result, userId) => {
@@ -132,7 +204,10 @@ export function TeamWorkspacePage() {
     createMutation.isPending ||
     joinMutation.isPending ||
     leaveMutation.isPending ||
-    removeMemberMutation.isPending
+    removeMemberMutation.isPending ||
+    proposalMutation.isPending ||
+    repoMutation.isPending ||
+    finalizeMutation.isPending
 
   function handleCreate(event: FormEvent) {
     event.preventDefault()
@@ -156,6 +231,34 @@ export function TeamWorkspacePage() {
     }
     setFormError(null)
     joinMutation.mutate(inviteCode.trim())
+  }
+
+  async function handleProposalChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) {
+      return
+    }
+    setActionError(null)
+    const result = await validateProposalFile(file)
+    if (!result.valid) {
+      setProposalError(result.errorMessage)
+      return
+    }
+    setProposalError(null)
+    proposalMutation.mutate(file)
+  }
+
+  function handleRepoSubmit(event: FormEvent) {
+    event.preventDefault()
+    setActionError(null)
+    const error = validateRepoUrl(repoUrl)
+    if (error) {
+      setRepoError(error)
+      return
+    }
+    setRepoError(null)
+    repoMutation.mutate(repoUrl.trim())
   }
 
   async function handleCopyCode() {
@@ -449,6 +552,212 @@ export function TeamWorkspacePage() {
               )
             })}
           </ul>
+
+          {isLeader && (
+            <div
+              data-testid="leader-submission-section"
+              className="mt-6 space-y-4 border-t border-[#222] pt-5"
+            >
+              <h3 className="text-sm font-semibold text-zinc-300">Submission Ketua Tim</h3>
+
+              {/* Proposal PDF (max 10 MB) */}
+              <div className="rounded-lg border border-[#222] bg-black px-3.5 py-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="flex items-center gap-2 text-sm text-zinc-300">
+                    <FileText className="h-4 w-4 text-zinc-500" aria-hidden="true" />
+                    Proposal PDF
+                  </span>
+                  <span className="text-xs text-zinc-500">
+                    Maksimal {formatBytes(PROPOSAL_MAX_BYTES)}
+                  </span>
+                </div>
+
+                {team.submission.proposal ? (
+                  <p data-testid="proposal-meta" className="mt-2 text-xs text-zinc-400">
+                    {team.submission.proposal.original_filename} ·{' '}
+                    {formatBytes(team.submission.proposal.size_bytes)}
+                  </p>
+                ) : (
+                  <p className="mt-2 text-xs text-zinc-500">Belum ada proposal yang diunggah.</p>
+                )}
+
+                {!isLocked && (
+                  <>
+                    <input
+                      ref={proposalInputRef}
+                      id="file-input-proposal"
+                      data-testid="file-input-proposal"
+                      type="file"
+                      accept="application/pdf"
+                      className="sr-only"
+                      onChange={(event) => void handleProposalChange(event)}
+                    />
+                    <button
+                      type="button"
+                      disabled={isBusy}
+                      onClick={() => proposalInputRef.current?.click()}
+                      className="mt-3 inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-[#333] bg-[#121212] px-3 py-1.5 text-xs font-medium text-zinc-200 transition hover:border-zinc-500 hover:text-white disabled:opacity-50"
+                    >
+                      <Upload className="h-3.5 w-3.5" aria-hidden="true" />
+                      {team.submission.proposal ? 'Ganti Proposal' : 'Unggah Proposal'}
+                    </button>
+                  </>
+                )}
+
+                {proposalPercent !== null && (
+                  <div
+                    data-testid="proposal-progress"
+                    className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-[#1f1f1f]"
+                  >
+                    <div
+                      className="h-full bg-zinc-300 transition-all"
+                      style={{ width: `${proposalPercent}%` }}
+                    />
+                  </div>
+                )}
+
+                {proposalError && (
+                  <p
+                    data-testid="proposal-error"
+                    className="mt-2 rounded-md border border-red-500/30 bg-red-950/30 px-2.5 py-1.5 text-xs text-red-200"
+                  >
+                    {proposalError}
+                  </p>
+                )}
+              </div>
+
+              {/* GitHub repository URL */}
+              <div className="rounded-lg border border-[#222] bg-black px-3.5 py-3">
+                <span className="flex items-center gap-2 text-sm text-zinc-300">
+                  <GitBranch className="h-4 w-4 text-zinc-500" aria-hidden="true" />
+                  Repositori GitHub
+                </span>
+
+                {team.submission.repo_url ? (
+                  <p data-testid="repo-url-value" className="mt-2 break-all text-xs text-zinc-400">
+                    {team.submission.repo_url}
+                  </p>
+                ) : (
+                  <p className="mt-2 text-xs text-zinc-500">Belum ada link repositori.</p>
+                )}
+
+                {!isLocked && (
+                  <form onSubmit={handleRepoSubmit} className="mt-3">
+                    <label
+                      htmlFor="repo-url-input"
+                      className="block text-xs font-medium text-zinc-400"
+                    >
+                      URL Repositori GitHub
+                    </label>
+                    <div className="mt-1.5 flex flex-wrap gap-2">
+                      <input
+                        id="repo-url-input"
+                        name="repo_url"
+                        type="url"
+                        value={repoUrl}
+                        onChange={(event) => setRepoUrl(event.target.value)}
+                        placeholder="https://github.com/tim-garuda/schematics-app"
+                        className="min-w-0 flex-1 rounded-md border border-[#333] bg-black px-3 py-2 text-sm text-zinc-100 outline-none transition focus:border-zinc-500"
+                      />
+                      <button
+                        type="submit"
+                        disabled={isBusy}
+                        className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-[#333] bg-[#121212] px-3 py-2 text-xs font-medium text-zinc-200 transition hover:border-zinc-500 hover:text-white disabled:opacity-50"
+                      >
+                        {repoMutation.isPending ? 'Menyimpan...' : 'Simpan Link'}
+                      </button>
+                    </div>
+                  </form>
+                )}
+
+                {repoError && (
+                  <p
+                    data-testid="repo-error"
+                    className="mt-2 rounded-md border border-red-500/30 bg-red-950/30 px-2.5 py-1.5 text-xs text-red-200"
+                  >
+                    {repoError}
+                  </p>
+                )}
+              </div>
+
+              {/* finalize_missing checklist + two-step finalize */}
+              {!isLocked && (
+                <div className="rounded-lg border border-[#222] bg-black px-3.5 py-3">
+                  <span className="flex items-center gap-2 text-sm text-zinc-300">
+                    <ListChecks className="h-4 w-4 text-zinc-500" aria-hidden="true" />
+                    Syarat Submit Final
+                  </span>
+
+                  {team.finalize_missing.length === 0 ? (
+                    <p
+                      data-testid="finalize-checklist"
+                      className="mt-2 flex items-center gap-1.5 text-xs text-emerald-200"
+                    >
+                      <Check className="h-3.5 w-3.5" aria-hidden="true" />
+                      Semua syarat sudah terpenuhi.
+                    </p>
+                  ) : (
+                    <ul
+                      data-testid="finalize-checklist"
+                      className="mt-2 list-inside list-disc space-y-0.5 text-xs text-zinc-400"
+                    >
+                      {team.finalize_missing.map((item) => (
+                        <li key={item}>{FINALIZE_MISSING_LABELS[item]}</li>
+                      ))}
+                    </ul>
+                  )}
+
+                  <button
+                    type="button"
+                    disabled={isBusy || team.finalize_missing.length > 0}
+                    onClick={() => setFinalizeOpen(true)}
+                    className="mt-3 inline-flex cursor-pointer items-center gap-1.5 rounded-md bg-[#ededed] px-4 py-2 text-sm font-medium text-black transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    <Send className="h-4 w-4" aria-hidden="true" />
+                    Submit Final
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {finalizeOpen && (
+            <div
+              data-testid="finalize-confirm-modal"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="finalize-modal-title"
+              className="fixed inset-0 z-40 flex items-center justify-center bg-black/80 px-4"
+            >
+              <div className="w-full max-w-md rounded-xl border border-[#222] bg-[#121212] p-6 shadow-[0_10px_40px_rgba(0,0,0,0.9)]">
+                <h2 id="finalize-modal-title" className="text-lg font-semibold text-white">
+                  Konfirmasi Submit Final
+                </h2>
+                <p className="mt-2 text-sm text-zinc-400">
+                  Setelah submit final, data tim dan seluruh berkas submission{' '}
+                  <strong className="text-zinc-200">terkunci permanen</strong> dan diteruskan ke
+                  juri. Keanggotaan, proposal, video, dan link repositori tidak dapat diubah lagi.
+                </p>
+                <div className="mt-5 flex flex-wrap justify-end gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setFinalizeOpen(false)}
+                    className="cursor-pointer rounded-md border border-[#333] px-3.5 py-2 text-sm text-zinc-300 transition hover:border-zinc-500"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="button"
+                    disabled={finalizeMutation.isPending}
+                    onClick={() => finalizeMutation.mutate()}
+                    className="cursor-pointer rounded-md bg-[#ededed] px-3.5 py-2 text-sm font-medium text-black transition hover:bg-white disabled:opacity-50"
+                  >
+                    {finalizeMutation.isPending ? 'Mengirim...' : 'Ya, Submit Final'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {!isLocked && (
             <div className="mt-6 border-t border-[#222] pt-4">
