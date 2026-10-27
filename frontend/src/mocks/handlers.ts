@@ -4,12 +4,14 @@ import {
   DOCUMENT_TYPES,
   type ConsentInfo,
   type DocumentType,
+  type FinalizeMissingItem,
   type ItemMeta,
   type Me,
   type ParticipantDocumentsResponse,
   type ParticipantProfile,
   type PublicSettings,
   type Team,
+  type TeamStatus,
   type UpdateProfileRequest,
 } from '../api/types'
 import {
@@ -23,6 +25,12 @@ import {
   normalizeProfileInput,
   validateProfileForm,
 } from '../lib/profileValidation'
+import {
+  normalizeInviteCode,
+  normalizeRepoUrl,
+  validateRepoUrl,
+  validateTeamName,
+} from '../lib/teamValidation'
 
 export const DEFAULT_MOCK_SETTINGS: PublicSettings = {
   registration_deadline: '2026-11-20T23:59:00+07:00',
@@ -133,7 +141,7 @@ interface MockAccountRecord {
   user: Me
   profile: ParticipantProfile
   documents: ParticipantDocumentsResponse
-  team: Team | null
+  teamId: string | null
 }
 
 function createEmptyProfile(): ParticipantProfile {
@@ -162,11 +170,33 @@ function createEmptyDocuments(): ParticipantDocumentsResponse {
   }
 }
 
-function createInitialAccountsAndItems(policyVersion: string): {
+function computeFinalizeMissing(team: Team, minTeamSize: number): FinalizeMissingItem[] {
+  const missing: FinalizeMissingItem[] = []
+  if (!team.submission.proposal) {
+    missing.push('proposal')
+  }
+  if (!team.submission.video) {
+    missing.push('video')
+  }
+  if (!team.submission.repo_url) {
+    missing.push('repo_url')
+  }
+  if (team.members.length < minTeamSize) {
+    missing.push('min_members')
+  }
+  if (team.members.some((m) => !m.profile_complete || !m.documents_complete)) {
+    missing.push('members_incomplete')
+  }
+  return missing
+}
+
+function createInitialStateData(policyVersion: string): {
   accounts: Map<string, MockAccountRecord>
+  teams: Map<string, Team>
   items: Map<string, MockStoredItem>
 } {
   const accounts = new Map<string, MockAccountRecord>()
+  const teams = new Map<string, Team>()
   const items = new Map<string, MockStoredItem>()
 
   function registerDocItem(ownerEmail: string, meta: ItemMeta): ItemMeta {
@@ -180,8 +210,11 @@ function createInitialAccountsAndItems(policyVersion: string): {
   }
 
   const budiId = 'b1a7c2d4-5e6f-4a8b-9c0d-1e2f3a4b5c6d'
-  const budiTeam: Team = {
-    id: '9c8b7a6d-5e4f-4321-8765-0fedcba98765',
+  const sariId = 'd4e5f6a7-1111-4222-8333-444455556666'
+  const garudaTeamId = '9c8b7a6d-5e4f-4321-8765-0fedcba98765'
+
+  const garudaTeam: Team = {
+    id: garudaTeamId,
     name: 'Tim Garuda',
     code: 'K7M2Q9XA',
     status: 'draft',
@@ -197,7 +230,7 @@ function createInitialAccountsAndItems(policyVersion: string): {
         documents_complete: true,
       },
       {
-        user_id: 'd4e5f6a7-1111-4222-8333-444455556666',
+        user_id: sariId,
         full_name: 'Sari Dewi',
         is_leader: false,
         profile_complete: true,
@@ -211,6 +244,8 @@ function createInitialAccountsAndItems(policyVersion: string): {
     },
     finalize_missing: ['proposal', 'video', 'repo_url', 'members_incomplete'],
   }
+
+  teams.set(garudaTeam.id, garudaTeam)
 
   accounts.set('budi@mahasiswa.ac.id', {
     password: 'rahasia-panjang-123',
@@ -227,9 +262,9 @@ function createInitialAccountsAndItems(policyVersion: string): {
       },
       current_policy_version: policyVersion,
       team: {
-        id: budiTeam.id,
-        name: budiTeam.name,
-        status: budiTeam.status,
+        id: garudaTeam.id,
+        name: garudaTeam.name,
+        status: garudaTeam.status,
         is_leader: true,
       },
     },
@@ -274,7 +309,65 @@ function createInitialAccountsAndItems(policyVersion: string): {
       }),
       documents_complete: true,
     },
-    team: budiTeam,
+    teamId: garudaTeam.id,
+  })
+
+  accounts.set('sari@mahasiswa.ac.id', {
+    password: 'rahasia-panjang-123',
+    user: {
+      id: sariId,
+      email: 'sari@mahasiswa.ac.id',
+      role: 'peserta',
+      full_name: 'Sari Dewi',
+      verification_status: 'belum_lengkap',
+      verification_note: null,
+      consent: {
+        policy_version: policyVersion,
+        agreed_at: '2026-10-26T09:05:00+07:00',
+      },
+      current_policy_version: policyVersion,
+      team: {
+        id: garudaTeam.id,
+        name: garudaTeam.name,
+        status: garudaTeam.status,
+        is_leader: false,
+      },
+    },
+    profile: {
+      full_name: 'Sari Dewi',
+      nim: '5025231045',
+      study_program: 'Teknik Informatika',
+      institution: 'Institut Teknologi Sepuluh Nopember',
+      birth_date: '2005-08-19',
+      domicile: 'Surabaya',
+      phone: '081234560011',
+      age: 21,
+      is_minor: false,
+      profile_complete: true,
+      verification_status: 'belum_lengkap',
+      verification_note: null,
+    },
+    documents: {
+      ktp: registerDocItem('sari@mahasiswa.ac.id', {
+        item_id: '8a1b2c3d-1111-4222-8333-444455557701',
+        field: 'ktp',
+        content_type: 'image/jpeg',
+        size_bytes: 390_100,
+        original_filename: 'ktp-sari.jpg',
+        uploaded_at: '2026-10-26T10:22:00+07:00',
+      }),
+      ktm: registerDocItem('sari@mahasiswa.ac.id', {
+        item_id: '8a1b2c3d-1111-4222-8333-444455557702',
+        field: 'ktm',
+        content_type: 'application/pdf',
+        size_bytes: 410_200,
+        original_filename: 'ktm-sari.pdf',
+        uploaded_at: '2026-10-26T10:25:00+07:00',
+      }),
+      twibbon: null,
+      documents_complete: false,
+    },
+    teamId: garudaTeam.id,
   })
 
   accounts.set('terverifikasi@mahasiswa.ac.id', {
@@ -334,7 +427,7 @@ function createInitialAccountsAndItems(policyVersion: string): {
       }),
       documents_complete: true,
     },
-    team: null,
+    teamId: null,
   })
 
   accounts.set('ditolak@mahasiswa.ac.id', {
@@ -394,7 +487,7 @@ function createInitialAccountsAndItems(policyVersion: string): {
       }),
       documents_complete: true,
     },
-    team: null,
+    teamId: null,
   })
 
   accounts.set('baru@mahasiswa.ac.id', {
@@ -412,7 +505,7 @@ function createInitialAccountsAndItems(policyVersion: string): {
     },
     profile: createEmptyProfile(),
     documents: createEmptyDocuments(),
-    team: null,
+    teamId: null,
   })
 
   accounts.set('juri1@panitia.id', {
@@ -429,7 +522,7 @@ function createInitialAccountsAndItems(policyVersion: string): {
     },
     profile: createEmptyProfile(),
     documents: createEmptyDocuments(),
-    team: null,
+    teamId: null,
   })
 
   accounts.set('admin@panitia.id', {
@@ -446,10 +539,10 @@ function createInitialAccountsAndItems(policyVersion: string): {
     },
     profile: createEmptyProfile(),
     documents: createEmptyDocuments(),
-    team: null,
+    teamId: null,
   })
 
-  return { accounts, items }
+  return { accounts, teams, items }
 }
 
 interface MockServerState {
@@ -457,19 +550,21 @@ interface MockServerState {
   policyVersion: string
   policyMarkdown: string
   accounts: Map<string, MockAccountRecord>
+  teams: Map<string, Team>
   items: Map<string, MockStoredItem>
   activeEmail: string | null
   csrfToken: string | null
   nextIdCounter: number
 }
 
-const initialSeed = createInitialAccountsAndItems(DEFAULT_POLICY_VERSION)
+const initialSeed = createInitialStateData(DEFAULT_POLICY_VERSION)
 
 const mockState: MockServerState = {
   settings: structuredClone(DEFAULT_MOCK_SETTINGS),
   policyVersion: DEFAULT_POLICY_VERSION,
   policyMarkdown: DEFAULT_POLICY_MARKDOWN,
   accounts: initialSeed.accounts,
+  teams: initialSeed.teams,
   items: initialSeed.items,
   activeEmail: null,
   csrfToken: null,
@@ -487,12 +582,60 @@ function setBrowserCsrfCookie(token: string | null): void {
   }
 }
 
+function findAccountByUserId(userId: string): MockAccountRecord | null {
+  for (const account of mockState.accounts.values()) {
+    if (account.user.id === userId) {
+      return account
+    }
+  }
+  return null
+}
+
+function syncTeamDerivedState(team: Team): Team {
+  const updated: Team = {
+    ...team,
+    finalize_missing: computeFinalizeMissing(team, mockState.settings.min_team_size),
+  }
+  mockState.teams.set(updated.id, updated)
+
+  for (const member of updated.members) {
+    const account = findAccountByUserId(member.user_id)
+    if (account) {
+      account.teamId = updated.id
+      account.user = {
+        ...account.user,
+        team: {
+          id: updated.id,
+          name: updated.name,
+          status: updated.status,
+          is_leader: updated.leader_id === account.user.id,
+        },
+      }
+    }
+  }
+
+  return updated
+}
+
+const INVITE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+
+function generateMockInviteCode(seed: number): string {
+  let value = seed * 7919 + 104729
+  let code = ''
+  for (let i = 0; i < 8; i++) {
+    code += INVITE_ALPHABET[value % INVITE_ALPHABET.length]
+    value = Math.floor(value / 7) + (i + 3) * 31
+  }
+  return code
+}
+
 export function resetMockState(): void {
-  const fresh = createInitialAccountsAndItems(DEFAULT_POLICY_VERSION)
+  const fresh = createInitialStateData(DEFAULT_POLICY_VERSION)
   mockState.settings = structuredClone(DEFAULT_MOCK_SETTINGS)
   mockState.policyVersion = DEFAULT_POLICY_VERSION
   mockState.policyMarkdown = DEFAULT_POLICY_MARKDOWN
   mockState.accounts = fresh.accounts
+  mockState.teams = fresh.teams
   mockState.items = fresh.items
   mockState.activeEmail = null
   mockState.csrfToken = null
@@ -518,6 +661,27 @@ export function setMockRegistrationDeadline(deadlineIso: string): void {
     ...mockState.settings,
     registration_deadline: deadlineIso,
   }
+}
+
+export function setMockMaxTeamSize(maxTeamSize: number): void {
+  mockState.settings = {
+    ...mockState.settings,
+    max_team_size: maxTeamSize,
+  }
+}
+
+export function setMockTeamStatus(teamId: string, status: TeamStatus): boolean {
+  const existing = mockState.teams.get(teamId)
+  if (!existing) {
+    return false
+  }
+  const updated: Team = {
+    ...existing,
+    status,
+    finalized_at: status === 'final' ? new Date().toISOString() : null,
+  }
+  syncTeamDerivedState(updated)
+  return true
 }
 
 export function tamperMockItem(itemId: string, tampered = true): boolean {
@@ -626,6 +790,92 @@ function isRegistrationDeadlinePassed(): boolean {
   return !Number.isNaN(targetMs) && Date.now() > targetMs
 }
 
+function isSubmissionDeadlinePassed(): boolean {
+  const targetMs = Date.parse(mockState.settings.submission_deadline)
+  return !Number.isNaN(targetMs) && Date.now() > targetMs
+}
+
+/**
+ * Shared gate for the three leader-only submission endpoints: an authenticated
+ * `peserta` who leads a team that is still `draft`, before the submission deadline.
+ */
+function requireSubmissionLeader(request: Request):
+  | { ok: true; record: MockAccountRecord; team: Team }
+  | { ok: false; response: Response } {
+  const rawRecord = getAuthenticatedRecord()
+  if (!rawRecord) {
+    return {
+      ok: false,
+      response: HttpResponse.json(
+        { error: { code: 'unauthenticated', message: 'Sesi belum aktif', details: {} } },
+        { status: 401 },
+      ),
+    }
+  }
+
+  const csrfError = verifyCsrf(request)
+  if (csrfError) {
+    return { ok: false, response: csrfError }
+  }
+
+  const guard = requirePesertaWithConsent(rawRecord)
+  if (!guard.ok) {
+    return { ok: false, response: guard.response }
+  }
+  const { record } = guard
+
+  const team = record.teamId ? (mockState.teams.get(record.teamId) ?? null) : null
+  if (!team || team.leader_id !== record.user.id) {
+    return {
+      ok: false,
+      response: HttpResponse.json(
+        {
+          error: {
+            code: 'not_leader',
+            message: 'Hanya Ketua Tim yang dapat mengubah submission.',
+            details: {},
+          },
+        },
+        { status: 403 },
+      ),
+    }
+  }
+
+  if (team.status === 'final') {
+    return {
+      ok: false,
+      response: HttpResponse.json(
+        {
+          error: {
+            code: 'team_locked',
+            message: 'Tim sudah difinalisasi sehingga submission tidak dapat diubah.',
+            details: {},
+          },
+        },
+        { status: 409 },
+      ),
+    }
+  }
+
+  if (isSubmissionDeadlinePassed()) {
+    return {
+      ok: false,
+      response: HttpResponse.json(
+        {
+          error: {
+            code: 'deadline_passed',
+            message: 'Tenggat pengumpulan karya telah terlewat.',
+            details: {},
+          },
+        },
+        { status: 409 },
+      ),
+    }
+  }
+
+  return { ok: true, record, team }
+}
+
 function issueSessionForEmail(email: string): { user: Me; csrfCookieHeader: string } {
   const record = mockState.accounts.get(email)!
   record.user = {
@@ -721,7 +971,7 @@ export const handlers = [
       user: newUser,
       profile: createEmptyProfile(),
       documents: createEmptyDocuments(),
-      team: null,
+      teamId: null,
     })
 
     const { user, csrfCookieHeader } = issueSessionForEmail(rawEmail)
@@ -987,14 +1237,17 @@ export const handlers = [
       verification_note: nextNote,
     }
 
-    if (record.team) {
-      record.team = {
-        ...record.team,
-        members: record.team.members.map((m) =>
-          m.user_id === record.user.id
-            ? { ...m, full_name: normalized.full_name, profile_complete: true }
-            : m,
-        ),
+    if (record.teamId) {
+      const existingTeam = mockState.teams.get(record.teamId)
+      if (existingTeam) {
+        syncTeamDerivedState({
+          ...existingTeam,
+          members: existingTeam.members.map((m) =>
+            m.user_id === record.user.id
+              ? { ...m, full_name: normalized.full_name, profile_complete: true }
+              : m,
+          ),
+        })
       }
     }
 
@@ -1143,12 +1396,15 @@ export const handlers = [
       record.user.verification_note = null
     }
 
-    if (record.team) {
-      record.team = {
-        ...record.team,
-        members: record.team.members.map((m) =>
-          m.user_id === record.user.id ? { ...m, documents_complete: docsComplete } : m,
-        ),
+    if (record.teamId) {
+      const existingTeam = mockState.teams.get(record.teamId)
+      if (existingTeam) {
+        syncTeamDerivedState({
+          ...existingTeam,
+          members: existingTeam.members.map((m) =>
+            m.user_id === record.user.id ? { ...m, documents_complete: docsComplete } : m,
+          ),
+        })
       }
     }
 
@@ -1232,12 +1488,640 @@ export const handlers = [
     })
   }),
 
+  http.post('*/api/teams', async ({ request }) => {
+    const rawRecord = getAuthenticatedRecord()
+    if (!rawRecord) {
+      return HttpResponse.json(
+        {
+          error: {
+            code: 'unauthenticated',
+            message: 'Sesi belum aktif',
+            details: {},
+          },
+        },
+        { status: 401 },
+      )
+    }
+
+    const csrfError = verifyCsrf(request)
+    if (csrfError) {
+      return csrfError
+    }
+
+    const guard = requirePesertaWithConsent(rawRecord)
+    if (!guard.ok) {
+      return guard.response
+    }
+    const { record } = guard
+
+    if (isRegistrationDeadlinePassed()) {
+      return HttpResponse.json(
+        {
+          error: {
+            code: 'deadline_passed',
+            message: 'Tenggat pendaftaran telah terlewat.',
+            details: {},
+          },
+        },
+        { status: 409 },
+      )
+    }
+
+    if (record.teamId !== null) {
+      return HttpResponse.json(
+        {
+          error: {
+            code: 'already_in_team',
+            message: 'Anda sudah tergabung di dalam sebuah tim.',
+            details: {},
+          },
+        },
+        { status: 409 },
+      )
+    }
+
+    const body = (await request.json().catch(() => null)) as { name?: unknown } | null
+    const rawName = typeof body?.name === 'string' ? body.name : ''
+    const nameError = validateTeamName(rawName)
+    if (nameError) {
+      return HttpResponse.json(
+        {
+          error: {
+            code: 'validation_error',
+            message: 'Nama tim tidak valid',
+            details: { fields: { name: nameError } },
+          },
+        },
+        { status: 400 },
+      )
+    }
+
+    const counter = ++mockState.nextIdCounter
+    const newTeamId = `22222222-3333-4444-8555-${String(counter).padStart(12, '0')}`
+    const trimmedName = rawName.trim()
+
+    let inviteCode = generateMockInviteCode(counter)
+    const existingCodes = new Set(Array.from(mockState.teams.values(), (t) => t.code))
+    let attempt = counter
+    while (existingCodes.has(inviteCode)) {
+      inviteCode = generateMockInviteCode(++attempt)
+    }
+
+    const createdTeam: Team = {
+      id: newTeamId,
+      name: trimmedName,
+      code: inviteCode,
+      status: 'draft',
+      leader_id: record.user.id,
+      created_at: new Date().toISOString(),
+      finalized_at: null,
+      members: [
+        {
+          user_id: record.user.id,
+          full_name: record.profile.full_name,
+          is_leader: true,
+          profile_complete: record.profile.profile_complete,
+          documents_complete: record.documents.documents_complete,
+        },
+      ],
+      submission: {
+        proposal: null,
+        video: null,
+        repo_url: null,
+      },
+      finalize_missing: [],
+    }
+
+    const synced = syncTeamDerivedState(createdTeam)
+    return HttpResponse.json({ team: synced }, { status: 201 })
+  }),
+
+  http.post('*/api/teams/join', async ({ request }) => {
+    const rawRecord = getAuthenticatedRecord()
+    if (!rawRecord) {
+      return HttpResponse.json(
+        {
+          error: {
+            code: 'unauthenticated',
+            message: 'Sesi belum aktif',
+            details: {},
+          },
+        },
+        { status: 401 },
+      )
+    }
+
+    const csrfError = verifyCsrf(request)
+    if (csrfError) {
+      return csrfError
+    }
+
+    const guard = requirePesertaWithConsent(rawRecord)
+    if (!guard.ok) {
+      return guard.response
+    }
+    const { record } = guard
+
+    if (record.teamId !== null) {
+      return HttpResponse.json(
+        {
+          error: {
+            code: 'already_in_team',
+            message: 'Anda sudah tergabung di dalam sebuah tim.',
+            details: {},
+          },
+        },
+        { status: 409 },
+      )
+    }
+
+    const body = (await request.json().catch(() => null)) as { code?: unknown } | null
+    const rawCode = typeof body?.code === 'string' ? body.code : ''
+    const normalizedCode = normalizeInviteCode(rawCode)
+
+    if (!normalizedCode) {
+      return HttpResponse.json(
+        {
+          error: {
+            code: 'validation_error',
+            message: 'Kode tim wajib diisi.',
+            details: { fields: { code: 'Kode undangan wajib diisi.' } },
+          },
+        },
+        { status: 400 },
+      )
+    }
+
+    const targetTeam = Array.from(mockState.teams.values()).find(
+      (t) => t.code.toUpperCase() === normalizedCode,
+    )
+
+    if (!targetTeam) {
+      return HttpResponse.json(
+        {
+          error: {
+            code: 'not_found',
+            message: 'Kode tim tidak ditemukan. Periksa kembali kode undangan 8 karakter Anda.',
+            details: {},
+          },
+        },
+        { status: 404 },
+      )
+    }
+
+    if (targetTeam.status === 'final') {
+      return HttpResponse.json(
+        {
+          error: {
+            code: 'team_locked',
+            message: 'Tim sudah berstatus Final dan terkunci dari penambahan anggota baru.',
+            details: {},
+          },
+        },
+        { status: 409 },
+      )
+    }
+
+    if (targetTeam.members.length >= mockState.settings.max_team_size) {
+      return HttpResponse.json(
+        {
+          error: {
+            code: 'team_full',
+            message: `Tim sudah penuh (maksimal ${mockState.settings.max_team_size} anggota).`,
+            details: {},
+          },
+        },
+        { status: 409 },
+      )
+    }
+
+    const updatedTeam = syncTeamDerivedState({
+      ...targetTeam,
+      members: [
+        ...targetTeam.members,
+        {
+          user_id: record.user.id,
+          full_name: record.profile.full_name,
+          is_leader: false,
+          profile_complete: record.profile.profile_complete,
+          documents_complete: record.documents.documents_complete,
+        },
+      ],
+    })
+
+    return HttpResponse.json({ team: updatedTeam }, { status: 200 })
+  }),
+
   http.get('*/api/teams/me', () => {
     const guard = requirePesertaWithConsent(getAuthenticatedRecord())
     if (!guard.ok) {
       return guard.response
     }
-    return HttpResponse.json({ team: guard.record.team }, { status: 200 })
+    const team = guard.record.teamId ? (mockState.teams.get(guard.record.teamId) ?? null) : null
+    return HttpResponse.json({ team }, { status: 200 })
+  }),
+
+  http.post('*/api/teams/me/leave', ({ request }) => {
+    const rawRecord = getAuthenticatedRecord()
+    if (!rawRecord) {
+      return HttpResponse.json(
+        {
+          error: {
+            code: 'unauthenticated',
+            message: 'Sesi belum aktif',
+            details: {},
+          },
+        },
+        { status: 401 },
+      )
+    }
+
+    const csrfError = verifyCsrf(request)
+    if (csrfError) {
+      return csrfError
+    }
+
+    const guard = requirePesertaWithConsent(rawRecord)
+    if (!guard.ok) {
+      return guard.response
+    }
+    const { record } = guard
+
+    if (!record.teamId) {
+      return HttpResponse.json(
+        {
+          error: {
+            code: 'no_team',
+            message: 'Anda belum tergabung dalam tim mana pun.',
+            details: {},
+          },
+        },
+        { status: 409 },
+      )
+    }
+
+    const team = mockState.teams.get(record.teamId)
+    if (!team) {
+      record.teamId = null
+      record.user = { ...record.user, team: null }
+      return HttpResponse.json(
+        {
+          error: {
+            code: 'no_team',
+            message: 'Tim tidak ditemukan.',
+            details: {},
+          },
+        },
+        { status: 409 },
+      )
+    }
+
+    if (team.status === 'final') {
+      return HttpResponse.json(
+        {
+          error: {
+            code: 'team_locked',
+            message: 'Tim sudah difinalisasi sehingga anggota tidak dapat keluar.',
+            details: {},
+          },
+        },
+        { status: 409 },
+      )
+    }
+
+    if (team.leader_id === record.user.id) {
+      return HttpResponse.json(
+        {
+          error: {
+            code: 'leader_cannot_leave',
+            message: 'Ketua tim tidak dapat keluar dari tim.',
+            details: {},
+          },
+        },
+        { status: 409 },
+      )
+    }
+
+    record.teamId = null
+    record.user = { ...record.user, team: null }
+
+    syncTeamDerivedState({
+      ...team,
+      members: team.members.filter((m) => m.user_id !== record.user.id),
+    })
+
+    return new HttpResponse(null, { status: 204 })
+  }),
+
+  http.delete('*/api/teams/me/members/:userId', ({ request, params }) => {
+    const rawRecord = getAuthenticatedRecord()
+    if (!rawRecord) {
+      return HttpResponse.json(
+        {
+          error: {
+            code: 'unauthenticated',
+            message: 'Sesi belum aktif',
+            details: {},
+          },
+        },
+        { status: 401 },
+      )
+    }
+
+    const csrfError = verifyCsrf(request)
+    if (csrfError) {
+      return csrfError
+    }
+
+    const guard = requirePesertaWithConsent(rawRecord)
+    if (!guard.ok) {
+      return guard.response
+    }
+    const { record } = guard
+
+    const team = record.teamId ? (mockState.teams.get(record.teamId) ?? null) : null
+    if (!team) {
+      return HttpResponse.json(
+        {
+          error: {
+            code: 'not_found',
+            message: 'Anda belum memiliki tim.',
+            details: {},
+          },
+        },
+        { status: 404 },
+      )
+    }
+
+    if (team.leader_id !== record.user.id) {
+      return HttpResponse.json(
+        {
+          error: {
+            code: 'not_leader',
+            message: 'Hanya Ketua Tim yang dapat mengeluarkan anggota.',
+            details: {},
+          },
+        },
+        { status: 403 },
+      )
+    }
+
+    if (team.status === 'final') {
+      return HttpResponse.json(
+        {
+          error: {
+            code: 'team_locked',
+            message: 'Tim sudah berstatus Final sehingga susunan anggota terkunci.',
+            details: {},
+          },
+        },
+        { status: 409 },
+      )
+    }
+
+    const targetUserId = String(params.userId)
+    const memberExists = team.members.some(
+      (m) => m.user_id === targetUserId && !m.is_leader,
+    )
+    if (!memberExists) {
+      return HttpResponse.json(
+        {
+          error: {
+            code: 'not_found',
+            message: 'Anggota tidak ditemukan pada tim ini.',
+            details: {},
+          },
+        },
+        { status: 404 },
+      )
+    }
+
+    const kickedAccount = findAccountByUserId(targetUserId)
+    if (kickedAccount) {
+      kickedAccount.teamId = null
+      kickedAccount.user = { ...kickedAccount.user, team: null }
+    }
+
+    syncTeamDerivedState({
+      ...team,
+      members: team.members.filter((m) => m.user_id !== targetUserId),
+    })
+
+    return new HttpResponse(null, { status: 204 })
+  }),
+
+  http.post('*/api/teams/me/proposal', async ({ request }) => {
+    const gate = requireSubmissionLeader(request)
+    if (!gate.ok) {
+      return gate.response
+    }
+    const { record, team } = gate
+
+    const rawBytes = new Uint8Array(await request.arrayBuffer())
+
+    if (rawBytes.byteLength > mockState.settings.limits.proposal_max_bytes) {
+      return HttpResponse.json(
+        {
+          error: { code: 'too_large', message: 'Ukuran proposal melebihi batas 10 MB', details: {} },
+        },
+        { status: 413 },
+      )
+    }
+
+    if (rawBytes.byteLength === 0 || detectMagicMimeFromBytes(rawBytes) !== 'application/pdf') {
+      return HttpResponse.json(
+        {
+          error: {
+            code: 'unsupported_type',
+            message: 'Proposal harus berupa file PDF.',
+            details: {},
+          },
+        },
+        { status: 415 },
+      )
+    }
+
+    const encodedFilename = request.headers.get('X-Filename') ?? 'proposal.pdf'
+    let originalFilename = encodedFilename
+    try {
+      originalFilename = decodeURIComponent(encodedFilename)
+    } catch {
+      originalFilename = encodedFilename
+    }
+
+    // Re-uploading replaces the previous version.
+    const previous = team.submission.proposal
+    if (previous) {
+      mockState.items.delete(previous.item_id)
+    }
+
+    const newItem: ItemMeta = {
+      item_id: `33333333-4444-4555-8666-${String(++mockState.nextIdCounter).padStart(12, '0')}`,
+      field: 'proposal',
+      content_type: 'application/pdf',
+      size_bytes: rawBytes.byteLength,
+      original_filename: originalFilename,
+      uploaded_at: new Date().toISOString(),
+    }
+
+    mockState.items.set(newItem.item_id, {
+      meta: newItem,
+      bytes: rawBytes,
+      ownerEmail: record.user.email,
+      tampered: false,
+    })
+
+    syncTeamDerivedState({
+      ...team,
+      submission: { ...team.submission, proposal: newItem },
+    })
+
+    return HttpResponse.json(newItem, { status: 201 })
+  }),
+
+  http.post('*/api/teams/me/video', async ({ request }) => {
+    const gate = requireSubmissionLeader(request)
+    if (!gate.ok) {
+      return gate.response
+    }
+    const { record, team } = gate
+
+    const rawBytes = new Uint8Array(await request.arrayBuffer())
+
+    if (rawBytes.byteLength > mockState.settings.limits.video_max_bytes) {
+      return HttpResponse.json(
+        {
+          error: { code: 'too_large', message: 'Ukuran video melebihi batas 100 MB', details: {} },
+        },
+        { status: 413 },
+      )
+    }
+
+    if (rawBytes.byteLength === 0 || detectMagicMimeFromBytes(rawBytes) !== 'video/mp4') {
+      return HttpResponse.json(
+        {
+          error: {
+            code: 'unsupported_type',
+            message: 'Video demo harus berupa file MP4.',
+            details: {},
+          },
+        },
+        { status: 415 },
+      )
+    }
+
+    const encodedFilename = request.headers.get('X-Filename') ?? 'demo.mp4'
+    let originalFilename = encodedFilename
+    try {
+      originalFilename = decodeURIComponent(encodedFilename)
+    } catch {
+      originalFilename = encodedFilename
+    }
+
+    // Re-uploading replaces the previous version.
+    const previous = team.submission.video
+    if (previous) {
+      mockState.items.delete(previous.item_id)
+    }
+
+    const newItem: ItemMeta = {
+      item_id: `44444444-5555-4666-8777-${String(++mockState.nextIdCounter).padStart(12, '0')}`,
+      field: 'video',
+      content_type: 'video/mp4',
+      size_bytes: rawBytes.byteLength,
+      original_filename: originalFilename,
+      uploaded_at: new Date().toISOString(),
+    }
+
+    mockState.items.set(newItem.item_id, {
+      meta: newItem,
+      bytes: rawBytes,
+      ownerEmail: record.user.email,
+      tampered: false,
+    })
+
+    syncTeamDerivedState({
+      ...team,
+      submission: { ...team.submission, video: newItem },
+    })
+
+    return HttpResponse.json(newItem, { status: 201 })
+  }),
+
+  http.put('*/api/teams/me/repo', async ({ request }) => {
+    const gate = requireSubmissionLeader(request)
+    if (!gate.ok) {
+      return gate.response
+    }
+    const { team } = gate
+
+    const body = (await request.json().catch(() => null)) as { repo_url?: unknown } | null
+    const rawUrl = typeof body?.repo_url === 'string' ? body.repo_url : ''
+    const urlError = validateRepoUrl(rawUrl)
+    if (urlError) {
+      return HttpResponse.json(
+        {
+          error: {
+            code: 'validation_error',
+            message: 'Data tidak valid',
+            details: { fields: { repo_url: urlError } },
+          },
+        },
+        { status: 400 },
+      )
+    }
+
+    const normalizedUrl = normalizeRepoUrl(rawUrl)
+    syncTeamDerivedState({
+      ...team,
+      submission: { ...team.submission, repo_url: normalizedUrl },
+    })
+
+    return HttpResponse.json({ repo_url: normalizedUrl }, { status: 200 })
+  }),
+
+  http.post('*/api/teams/me/finalize', async ({ request }) => {
+    const gate = requireSubmissionLeader(request)
+    if (!gate.ok) {
+      return gate.response
+    }
+    const { team } = gate
+
+    const body = (await request.json().catch(() => null)) as { confirm?: unknown } | null
+    if (body?.confirm !== true) {
+      return HttpResponse.json(
+        {
+          error: {
+            code: 'validation_error',
+            message: 'Konfirmasi submit final wajib dikirim.',
+            details: { fields: { confirm: 'Nilai confirm harus true.' } },
+          },
+        },
+        { status: 400 },
+      )
+    }
+
+    const missing = computeFinalizeMissing(team, mockState.settings.min_team_size)
+    if (missing.length > 0) {
+      return HttpResponse.json(
+        {
+          error: {
+            code: 'finalize_requirements',
+            message: 'Syarat submit final belum lengkap.',
+            details: { missing },
+          },
+        },
+        { status: 409 },
+      )
+    }
+
+    const finalized = syncTeamDerivedState({
+      ...team,
+      status: 'final',
+      finalized_at: new Date().toISOString(),
+    })
+
+    return HttpResponse.json({ team: finalized }, { status: 200 })
   }),
 
   http.get('*/api/admin/benchmarks', () => {
