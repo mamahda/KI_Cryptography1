@@ -45,6 +45,7 @@ export const AUDIT_ACTIONS = [
   'view_item',
   'verify_participant',
   'create_juri',
+  'assign_juri',
   'update_settings',
   'integrity_failure',
   'login_failed',
@@ -490,6 +491,8 @@ export interface AdminJuriAccount {
   user_id: string
   email: string
   created_at: string
+  /** Teams this juri may open; replaced as a whole by PUT .../assignments. */
+  team_ids: string[]
 }
 
 export interface AdminJuriListResponse {

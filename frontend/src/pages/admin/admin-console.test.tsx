@@ -68,6 +68,26 @@ describe('Superadmin juri accounts', () => {
     expect(list).toHaveTextContent('juri1@panitia.id')
   })
 
+  it('assigns a final team to a juri and keeps it after reload', async () => {
+    signInAsAdmin()
+    setMockTeamStatus(GARUDA_TEAM_ID, 'final')
+    const user = userEvent.setup()
+    const view = renderAt('/admin/juri')
+
+    const juriId = 'e4d3c2b1-a098-4765-8432-10fedcba9876' // juri1@panitia.id in the mock seed
+    const checkbox = await screen.findByTestId(`juri-assign-${juriId}-${GARUDA_TEAM_ID}`)
+    expect(checkbox).not.toBeChecked()
+    await user.click(checkbox)
+    await user.click(screen.getByTestId(`juri-assign-save-${juriId}`))
+    expect(await screen.findByText('Penugasan disimpan.')).toBeInTheDocument()
+
+    view.unmount()
+    renderAt('/admin/juri')
+    await waitFor(() =>
+      expect(screen.getByTestId(`juri-assign-${juriId}-${GARUDA_TEAM_ID}`)).toBeChecked(),
+    )
+  })
+
   it('creates a juri account and shows it in the list', async () => {
     const user = userEvent.setup()
     signInAsAdmin()
