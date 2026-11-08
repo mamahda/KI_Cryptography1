@@ -233,6 +233,13 @@ def list_juri(
                 "user_id": row["user_id"],
                 "email": get_email(db, row["user_id"]),
                 "created_at": row["created_at"],
+                "team_ids": [
+                    team["team_id"]
+                    for team in db.execute(
+                        "SELECT team_id FROM juri_assignments WHERE juri_id = ?",
+                        (row["user_id"],),
+                    )
+                ],
             }
             for row in rows
         ]

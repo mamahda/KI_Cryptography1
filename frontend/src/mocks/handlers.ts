@@ -573,6 +573,8 @@ interface MockServerState {
   auditLogs: AuditLogItem[]
   /** Juri accounts live in `accounts`; only their creation time is extra. */
   juriCreatedAt: Map<string, string>
+  /** Juri user id → assigned team ids. */
+  juriAssignments: Map<string, string[]>
   nextAuditId: number
 }
 
@@ -637,6 +639,7 @@ const mockState: MockServerState = {
   nextIdCounter: 100,
   auditLogs: createInitialAuditLogs(),
   juriCreatedAt: new Map([['juri1@panitia.id', DEFAULT_JURI_CREATED_AT]]),
+  juriAssignments: new Map(),
   nextAuditId: 600,
 }
 
@@ -711,6 +714,7 @@ export function resetMockState(): void {
   mockState.nextIdCounter = 100
   mockState.auditLogs = createInitialAuditLogs()
   mockState.juriCreatedAt = new Map([['juri1@panitia.id', DEFAULT_JURI_CREATED_AT]])
+  mockState.juriAssignments = new Map()
   mockState.nextAuditId = 600
   setBrowserCsrfCookie(null)
 }
@@ -2706,9 +2710,25 @@ export const handlers = [
         email: account.user.email,
         created_at:
           mockState.juriCreatedAt.get(account.user.email) ?? DEFAULT_JURI_CREATED_AT,
+        team_ids: mockState.juriAssignments.get(account.user.id) ?? [],
       }))
 
     return HttpResponse.json({ juri }, { status: 200 })
+  }),
+
+  http.put('*/api/admin/juri/:juriId/assignments', async ({ params, request }) => {
+    const gate = requireRole('superadmin')
+    if (!gate.ok) {
+      return gate.response
+    }
+
+    const juriId = String(params.juriId)
+    const body = (await request.json()) as { team_ids: string[] }
+    const teamIds = Array.from(new Set(body.team_ids))
+    mockState.juriAssignments.set(juriId, teamIds)
+    recordAuditLog(gate.record, 'assign_juri', { subject_user_id: juriId })
+
+    return HttpResponse.json({ juri_id: juriId, team_ids: teamIds }, { status: 200 })
   }),
 
   http.post('*/api/admin/juri', async ({ request }) => {

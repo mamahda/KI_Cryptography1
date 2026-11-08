@@ -197,6 +197,7 @@ def test_participant_flow_and_assigned_judge_access(client):
         headers=headers(client),
     )
     assert response.status_code == 200, response.text
+    assert client.get("/api/admin/juri").json()["juri"][0]["team_ids"] == [team["id"]]
     login(client, "judge@example.com")
     assert client.get("/api/juri/teams").json()["teams"][0]["id"] == team["id"]
     assert client.get(f"/api/juri/teams/{team['id']}").status_code == 200
