@@ -63,3 +63,15 @@ class CryptoService:
     def email_index(self, email: str) -> bytes:
         """Blind index email (sudah dinormalisasi: strip + lowercase)."""
         return self._keyring.blind_index(email.strip().lower())
+
+    def unwrap_aes_keys_for_sharing(self, sealed: SealedCiphertext, *, context: str) -> bytes:
+        """Internal key transport: unwrap AES/HMAC keys without decrypting data."""
+        if sealed.cipher != "aes":
+            raise KeyConfigError("Hanya kunci AES yang dapat dibagikan")
+        return envelope.unwrap_keys(
+            self._keyring.kek(sealed.key_version),
+            sealed.wrap_nonce,
+            sealed.wrapped_keys,
+            sealed.wrap_tag,
+            envelope.build_aad(context, "aes", sealed.key_version),
+        )
