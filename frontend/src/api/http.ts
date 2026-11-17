@@ -424,3 +424,27 @@ export async function fetchItemBlob(
     content_disposition: contentDisposition,
   }
 }
+
+/** Fetches a binary response body (`application/octet-stream`) as an `ArrayBuffer`. */
+export async function fetchBinary(path: string, signal?: AbortSignal): Promise<ArrayBuffer> {
+  let response: Response
+  try {
+    response = await fetch(buildApiUrl(path), { method: 'GET', credentials: 'include', signal })
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'AbortError') {
+      throw new ApiClientError({ status: 0, code: 'aborted', message: 'Permintaan dibatalkan' })
+    }
+    throw new ApiClientError({
+      status: 0,
+      code: 'network_error',
+      message: 'Gagal terhubung ke server. Periksa koneksi jaringan Anda.',
+    })
+  }
+
+  if (!response.ok) {
+    const apiError = parseApiErrorFromBody(response.status, await response.text())
+    notifyAuthLifecycle(apiError)
+    throw apiError
+  }
+  return response.arrayBuffer()
+}

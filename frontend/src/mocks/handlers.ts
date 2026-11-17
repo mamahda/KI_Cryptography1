@@ -45,6 +45,7 @@ import {
   validateRepoUrl,
   validateTeamName,
 } from '../lib/teamValidation'
+import { createSharingHandlers, resetMockSharing } from './sharingHandlers'
 
 export const DEFAULT_MOCK_SETTINGS: PublicSettings = {
   registration_deadline: '2026-11-20T23:59:00+07:00',
@@ -702,6 +703,7 @@ function generateMockInviteCode(seed: number): string {
 }
 
 export function resetMockState(): void {
+  resetMockSharing()
   const fresh = createInitialStateData(DEFAULT_POLICY_VERSION)
   mockState.settings = structuredClone(DEFAULT_MOCK_SETTINGS)
   mockState.policyVersion = DEFAULT_POLICY_VERSION
@@ -1203,6 +1205,8 @@ const MOCK_BENCHMARK_RUNS: MockBenchmarkRun[] = [
 ]
 
 export const handlers = [
+  ...createSharingHandlers({ requireRole, verifyCsrf }),
+
   http.get('*/api/settings', () => {
     return HttpResponse.json(mockState.settings, { status: 200 })
   }),
