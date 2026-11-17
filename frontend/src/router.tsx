@@ -26,6 +26,7 @@ import { LandingPage } from './pages/LandingPage'
 import { ParticipantDashboardPage } from './pages/participant/ParticipantDashboardPage'
 import { ProfilePage } from './pages/participant/ProfilePage'
 import { EncryptionInspectorPage } from './pages/participant/EncryptionInspectorPage'
+import { SharingPage } from './pages/sharing/SharingPage'
 
 export function AppRoutes() {
   return (
@@ -52,6 +53,7 @@ export function AppRoutes() {
             <Route element={<ConsentGuard />}>
               <Route path="/dashboard" element={<ParticipantDashboardPage />} />
               <Route path="/profile" element={<ProfilePage />} />
+              <Route path="/sharing" element={<SharingPage />} />
               {/* Documents, team and video now live on the dashboard itself.
                   The old routes stay as redirects so saved links keep working. */}
               <Route path="/documents" element={<Navigate to="/dashboard" replace />} />

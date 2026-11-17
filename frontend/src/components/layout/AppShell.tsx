@@ -7,6 +7,7 @@ import {
   Home,
   LogOut,
   ScrollText,
+  Share2,
   ShieldCheck,
   SlidersHorizontal,
   User,
@@ -39,6 +40,7 @@ const NAV_BY_ROLE: Record<UserRole, NavItem[]> = {
   peserta: [
     { to: '/dashboard', label: 'Home', Icon: Home },
     { to: '/profile', label: 'Profil Saya', Icon: User },
+    { to: '/sharing', label: 'Berbagi Data', Icon: Share2 },
     { to: '/encryption-inspector', label: 'Encryption Inspector', Icon: ShieldCheck },
   ],
   juri: [
