@@ -1,10 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { AlertCircle, CheckCircle2, Download, KeyRound } from 'lucide-react'
+import { CheckCircle2, Download, KeyRound } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { isApiClientError, sharingApi } from '@/api'
 import { BTN_PRIMARY, BTN_SECONDARY, CARD, INPUT, LABEL, RECESSED, SECTION_HEADING } from '@/components/ui/tokens'
 import { downloadJson } from './download'
 import { generateKeyBackup } from './sharingCrypto'
+import { ErrorNote } from './shared'
 
 const PASSPHRASE_MIN_LENGTH = 10
 const BACKUP_FILENAME = 'schematics-private-key-backup.json'
@@ -15,19 +16,6 @@ interface GeneratedKey {
 }
 
 export const SHARING_KEY_QUERY_KEY = ['sharing', 'key'] as const
-
-function ErrorNote({ message, testId }: { message: string; testId?: string }) {
-  return (
-    <p
-      data-testid={testId}
-      role="alert"
-      className="mt-3 flex items-start gap-2 rounded-xl border border-red-500/40 bg-red-950/30 px-3 py-2.5 text-sm text-red-200"
-    >
-      <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-      <span>{message}</span>
-    </p>
-  )
-}
 
 /**
  * Creates the user's RSA key pair in the browser. The backup file is offered
