@@ -1,6 +1,7 @@
 import { PAGE_TITLE } from '@/components/ui/tokens'
 import { IncomingRequestsPanel } from './IncomingRequestsPanel'
 import { KeySetupPanel } from './KeySetupPanel'
+import { OutgoingRequestsPanel } from './OutgoingRequestsPanel'
 import { RequestAccessPanel } from './RequestAccessPanel'
 
 export function SharingPage() {
@@ -18,6 +19,7 @@ export function SharingPage() {
       <KeySetupPanel />
       <RequestAccessPanel />
       <IncomingRequestsPanel />
+      <OutgoingRequestsPanel />
     </div>
   )
 }

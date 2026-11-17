@@ -10,9 +10,9 @@ import {
 import { BTN_PRIMARY, BTN_SECONDARY, CARD, RECESSED, SECTION_HEADING, WELL } from '@/components/ui/tokens'
 import { formatTimestamp } from '@/lib/datetime'
 import { downloadJson } from './download'
-import { ErrorNote, fieldLabel, formatBytes, RequestStatusBadge, shortId } from './shared'
-
-export const SHARING_INCOMING_QUERY_KEY = ['sharing', 'incoming'] as const
+import { fieldLabel, formatBytes, shortId } from './format'
+import { SHARING_INCOMING_QUERY_KEY } from './queryKeys'
+import { ErrorNote, RequestStatusBadge } from './shared'
 
 function messageOf(error: unknown, fallback: string): string {
   return isApiClientError(error) ? error.message : fallback

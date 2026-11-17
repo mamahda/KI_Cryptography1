@@ -4,11 +4,9 @@ import { useState, type FormEvent } from 'react'
 import { isApiClientError, sharingApi } from '@/api'
 import { BTN_PRIMARY, BTN_SECONDARY, CARD, INPUT, LABEL, RECESSED, SECTION_HEADING } from '@/components/ui/tokens'
 import { useAuthStore } from '@/stores/authStore'
-import { SHARING_KEY_QUERY_KEY } from './KeySetupPanel'
+import { SHARING_KEY_QUERY_KEY, SHARING_OUTGOING_QUERY_KEY } from './queryKeys'
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-
-export const SHARING_OUTGOING_QUERY_KEY = ['sharing', 'outgoing'] as const
 
 /** Shows the user's own ID for sharing, and sends an access request to an owner's ID. */
 export function RequestAccessPanel() {

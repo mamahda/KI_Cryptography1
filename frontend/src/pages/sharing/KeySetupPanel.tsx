@@ -5,6 +5,7 @@ import { isApiClientError, sharingApi } from '@/api'
 import { BTN_PRIMARY, BTN_SECONDARY, CARD, INPUT, LABEL, RECESSED, SECTION_HEADING } from '@/components/ui/tokens'
 import { downloadJson } from './download'
 import { generateKeyBackup } from './sharingCrypto'
+import { SHARING_KEY_QUERY_KEY } from './queryKeys'
 import { ErrorNote } from './shared'
 
 const PASSPHRASE_MIN_LENGTH = 10
@@ -14,8 +15,6 @@ interface GeneratedKey {
   publicKeySpkiB64: string
   backupJson: string
 }
-
-export const SHARING_KEY_QUERY_KEY = ['sharing', 'key'] as const
 
 /**
  * Creates the user's RSA key pair in the browser. The backup file is offered
