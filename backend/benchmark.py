@@ -59,12 +59,14 @@ def run_benchmark(
     crypto = CryptoService(
         secrets.token_hex(32)
     )  # Ephemeral benchmark key, never saved or logged.
-    for cipher in CIPHER_NAMES:
-        check_correctness(crypto, cipher)
+
+    for cipher in CIPHER_NAMES: check_correctness(crypto, cipher)
     run_id = str(uuid4())
     env = deepcopy(benchmark_environment())
     env.update(repeats=repeats, warmup=warmup, sizes_bytes=sizes)
     samples = []
+
+    #nested loop: iterate over sizes, then warmup + repeats, then ciphers in rotating order
     for size in sizes:
         data = secrets.token_bytes(size)
         expected_hash = hashlib.sha256(data).digest()
@@ -92,6 +94,7 @@ def run_benchmark(
                         for op, duration in timings
                     )
                 del sealed, recovered
+
     migrate_db(database_path)
     with closing(connect_db(database_path)) as db:
         with db:
