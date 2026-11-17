@@ -22,6 +22,7 @@ const ACTION_LABELS: Record<AuditAction, string> = {
   view_item: 'Membuka berkas terenkripsi',
   verify_participant: 'Memutuskan verifikasi peserta',
   create_juri: 'Membuat akun juri',
+  assign_juri: 'Menugaskan juri ke tim',
   update_settings: 'Mengubah pengaturan',
   integrity_failure: 'Kegagalan integritas ciphertext',
   login_failed: 'Login gagal',

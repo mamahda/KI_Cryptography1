@@ -1,9 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { AlertCircle, CheckCircle2, Inbox, UserPlus } from 'lucide-react'
+import { AlertCircle, CheckCircle2, Inbox, Save, UserPlus } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
-import { apiClient, isApiClientError } from '@/api'
+import { apiClient, isApiClientError, type AdminJuriAccount, type AdminTeamListItem } from '@/api'
 import {
   BTN_PRIMARY,
+  BTN_SECONDARY,
   CARD,
   INPUT,
   LABEL,
@@ -43,7 +44,14 @@ export function AdminJuriPage() {
     },
   })
 
+  // shortcut: only the first 100 teams are offered; add paging if a contest ever has more.
+  const teamsQuery = useQuery({
+    queryKey: ['admin', 'teams', 'all'],
+    queryFn: ({ signal }) => apiClient.admin.listTeams({ page: 1, page_size: 100 }, signal),
+  })
+
   const accounts = juriQuery.data?.juri ?? []
+  const finalTeams = (teamsQuery.data?.items ?? []).filter((team) => team.status === 'final')
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -190,14 +198,17 @@ export function AdminJuriPage() {
                 <li
                   key={account.user_id}
                   data-testid={`juri-account-${account.user_id}`}
-                  className={`${WELL} flex flex-wrap items-center justify-between gap-2 px-3 py-2.5`}
+                  className={`${WELL} space-y-3 px-3 py-2.5`}
                 >
-                  <span className="text-sm font-medium break-all text-ink">
-                    {account.email}
-                  </span>
-                  <span className={`${RECESSED} px-2 py-1 text-xs text-ink-2`}>
-                    Dibuat {formatTimestamp(account.created_at)}
-                  </span>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-sm font-medium break-all text-ink">
+                      {account.email}
+                    </span>
+                    <span className={`${RECESSED} px-2 py-1 text-xs text-ink-2`}>
+                      Dibuat {formatTimestamp(account.created_at)}
+                    </span>
+                  </div>
+                  <JuriAssignmentForm account={account} finalTeams={finalTeams} />
                 </li>
               ))}
             </ul>
@@ -213,5 +224,83 @@ export function AdminJuriPage() {
         ) : null}
       </section>
     </div>
+  )
+}
+
+/** Checkbox list of final teams; saving replaces this juri's whole assignment set. */
+function JuriAssignmentForm({
+  account,
+  finalTeams,
+}: {
+  account: AdminJuriAccount
+  finalTeams: AdminTeamListItem[]
+}) {
+  const queryClient = useQueryClient()
+  const [selected, setSelected] = useState<string[]>(account.team_ids)
+  const [saved, setSaved] = useState(false)
+
+  const assignMutation = useMutation({
+    mutationFn: () => apiClient.admin.assignTeams(account.user_id, { team_ids: selected }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['admin', 'juri'] })
+      setSaved(true)
+    },
+  })
+
+  function toggle(teamId: string) {
+    setSaved(false)
+    setSelected((current) =>
+      current.includes(teamId) ? current.filter((id) => id !== teamId) : [...current, teamId],
+    )
+  }
+
+  if (finalTeams.length === 0) {
+    return <p className="text-xs text-ink-3">Belum ada tim final untuk ditugaskan.</p>
+  }
+
+  return (
+    <fieldset data-testid={`juri-assignment-${account.user_id}`} className="space-y-2">
+      <legend className="text-xs font-medium text-ink-2">Tim yang ditugaskan</legend>
+      <div className="flex flex-wrap gap-2">
+        {finalTeams.map((team) => (
+          <label
+            key={team.id}
+            className={`${RECESSED} flex cursor-pointer items-center gap-2 px-2.5 py-1.5 text-sm text-ink`}
+          >
+            <input
+              type="checkbox"
+              data-testid={`juri-assign-${account.user_id}-${team.id}`}
+              checked={selected.includes(team.id)}
+              onChange={() => toggle(team.id)}
+            />
+            {team.name}
+          </label>
+        ))}
+      </div>
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          data-testid={`juri-assign-save-${account.user_id}`}
+          disabled={assignMutation.isPending}
+          onClick={() => assignMutation.mutate()}
+          className={BTN_SECONDARY}
+        >
+          <Save className="h-4 w-4" aria-hidden="true" />
+          {assignMutation.isPending ? 'Menyimpan...' : 'Simpan penugasan'}
+        </button>
+        {saved ? (
+          <span role="status" className="text-xs text-emerald-200">
+            Penugasan disimpan.
+          </span>
+        ) : null}
+        {assignMutation.isError ? (
+          <span role="alert" className="text-xs text-red-200">
+            {isApiClientError(assignMutation.error)
+              ? assignMutation.error.message
+              : 'Gagal menyimpan penugasan.'}
+          </span>
+        ) : null}
+      </div>
+    </fieldset>
   )
 }
